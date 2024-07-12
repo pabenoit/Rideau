@@ -87,12 +87,14 @@ public:
   Data()
     : openTimerId{0, 0}, // Timers not configured use 0
       closeTimerId{0, 0}, // Timers not configured use 0
-      motorRideau({ Motor(0, 1), Motor(2, 3) }), 
+      motorRideau({ Motor(0 /* orange */, 1 /* jaune */, 2 /* vert */ , 25000 /* Rideau tention threshold */), 
+                    Motor(3 /* bleu */  , 4 /* mauve */, 5 /* blanc */, 25000 /* Rideau tention threshold */) }), 
       webStatus(WL_IDLE_STATUS){};
 
   unsigned short openTimerId[2];   // timer not configure use 0
   unsigned short closeTimerId[2];  // timer not configure use 0
   Motor motorRideau[2];
+
 
   // WEB Server
   int webStatus;  // connection status

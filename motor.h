@@ -2,6 +2,7 @@
 #ifndef MOTOR_H
 #define MOTOR_H
 #include <Arduino.h>
+#include <ezButton.h>
 
 class Motor
 {
@@ -17,12 +18,18 @@ class Motor
 
     enum MotorAction
     {
-      STOP,
-      RUNNING
+      A_STOP,
+      A_FOWARD,
+      A_REVERSE
     };
 
     public:
-        Motor(uint16_t pin1, uint16_t pin2): m_action(STOP), m_pin1(pin1), m_pin2(pin2) {}
+        Motor(uint16_t enA, uint16_t pin1, uint16_t pin2, float rideauTentionThreshold ): 
+              m_action(A_STOP), 
+              m_enA(enA), 
+              m_pin1(pin1), 
+              m_pin2(pin2), 
+              m_rideauTentionThreshold(rideauTentionThreshold) {}
 
         void setup();
 
@@ -37,8 +44,10 @@ class Motor
 
 
     private:
+      uint16_t m_enA;
       uint16_t m_pin1;
       uint16_t m_pin2;
+      float m_rideauTentionThreshold;
       
 };
 

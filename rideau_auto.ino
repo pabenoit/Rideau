@@ -12,6 +12,11 @@
 #include "html.h"
 #include "configData.h"
 #include "AsyncTimer.h"
+#include "HX711.h"
+
+HX711 scale;
+uint8_t dataPin = 8;  // Used by HX711 to mesure the tention
+uint8_t clockPin = 9; // Used by HX711 to mesure the tention
 
 class Data data;
 class Config config;
@@ -113,6 +118,7 @@ int getSunset() {
 
 void setup() {
   Serial.begin(9600);
+  scale.begin(dataPin, clockPin);
 
   data.motorRideau[0].setup();
 
@@ -149,6 +155,10 @@ void setup() {
 }
 
 void loop() {
+
+  // Read the rope tention
+  Serial.println(scale.read());
+
 
   client = server.available();
   if (client) {
