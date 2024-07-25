@@ -59,11 +59,13 @@ void Motor::action(enum MotorState state, byte power) {
 
 void Motor::run() {
 
-
-  if ((m_action == A_FOWARD) && ((millis() > m_stopAt) || (scale.read() > m_rideauTentionThreshold)))
+  // Stop after x time or if tention increase and eceed the threshold
+  if ((m_action == A_FOWARD) && ((millis() > m_stopAt) || 
+      ((ropeTention > prevRopeTention) && (ropeTention > m_rideauTentionThreshold))))
     action(BREAK, 0);
 
-  if ((m_action == A_REVERSE) && ((millis() > m_stopAt) || (scale.read() > m_rideauTentionThreshold)))
+  if ((m_action == A_REVERSE) && ((millis() > m_stopAt) ||
+      ((ropeTention > prevRopeTention) && (ropeTention > m_rideauTentionThreshold))))
     action(BREAK, 0);
 
 //  if ((m_action == RUNNING) && (millis() > m_stopAt))

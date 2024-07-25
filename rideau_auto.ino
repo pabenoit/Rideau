@@ -14,9 +14,12 @@
 #include "AsyncTimer.h"
 #include "HX711.h"
 
+// HX711 circuit wiring
+const int LOADCELL_DOUT_PIN  = 6;  // Used by HX711 to mesure the tention
+const int LOADCELL_SCK_PIN  = 7; // Used by HX711 to mesure the tention
+
 HX711 scale;
-uint8_t dataPin = 8;  // Used by HX711 to mesure the tention
-uint8_t clockPin = 9; // Used by HX711 to mesure the tention
+
 
 class Data data;
 class Config config;
@@ -25,15 +28,15 @@ class Config config;
 
 WiFiServer server(80);  // server socket
 WiFiClient client = server.available();
+
 WiFiUDP mdnsUDP;
 MDNS mdns(mdnsUDP);
 SunSet sun;
 
 class AsyncTimer timer;
 
-
-
-
+int ropeTention = 0;
+int prevRopeTention = 0;
 
 // utility function for digital clock display: prints leading 0
 String twoDigits(int digits) {
@@ -117,13 +120,13 @@ int getSunset() {
 
 
 void setup() {
-  Serial.begin(9600);
-  scale.begin(dataPin, clockPin);
+  Serial.begin(57600);
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
 
   data.motorRideau[0].setup();
 
-  //while (!Serial);
-  //Serial.println("Serial ready");
+  while (!Serial);
+  Serial.println("Serial ready");
 
   wifiEnable();
   wifiConnect();
@@ -152,17 +155,30 @@ void setup() {
 
   sprintf(timeString, "Heure: %d:%02d:%02d", hour(), minute(), second());
   Serial.println(timeString);
+
+
+//  Serial.println("Set tention reader to zero.");
+//  Serial.print(" Readings: ");
+//  Serial.println(scale.get_value());
+  //scale.tare();
+
 }
 
 void loop() {
 
   // Read the rope tention
-  Serial.println(scale.read());
-
+ if (scale.is_ready())
+ {
+    prevRopeTention = ropeTention;
+    ropeTention = int(scale.get_value()/500);
+    Serial.println(ropeTention);
+ }
 
   client = server.available();
   if (client) {
-    htmlRun(config, data, getTimeStr, getSunrise, getSunset);
+    Serial.println("Client connected");
+
+        htmlRun(config, data, getTimeStr, getSunrise, getSunset);
   }
 
   // This actually runs the Bonjour module. YOU HAVE TO CALL THIS PERIODICALLY,

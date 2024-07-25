@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include <ezButton.h>
 
+extern int ropeTention;
+extern int prevRopeTention;
+
 class Motor
 {
   public:
@@ -37,6 +40,7 @@ class Motor
 
         void run();
 
+        void setTentionThreshold(int tention) {m_rideauTentionThreshold = tention;}
 
     public:
     enum MotorAction m_action;
