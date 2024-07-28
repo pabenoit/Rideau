@@ -8,14 +8,13 @@
 
 extern WiFiClient client;
 
-
 extern void closeRideauManuel(int idx);
 extern void openRideauManuel(int idx);
 extern void closeRideauAuto(int idx);
 extern void openRideauAuto(int idx);
 
-
-void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)()) {
+void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)())
+{
 
   std::string preformattedPage = R"(
 <!doctype html>
@@ -102,15 +101,19 @@ void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunr
 
   client.print("\n");
 
-  for (int idx = 0; idx < 2; idx++) {
-    if (idx == 0) {
+  for (int idx = 0; idx < 2; idx++)
+  {
+    if (idx == 0)
+    {
       client.print("rideaux: {\n");
 
       if (config.rideau[idx].isEnabled)
         client.print("rideauxSwitchOn: true,\n");
       else
         client.print("rideauxSwitchOn: false,\n");
-    } else {
+    }
+    else
+    {
       client.print("voilages: {\n");
       if (config.rideau[idx].isEnabled)
         client.print("voilagesSwitchOn: true,\n");
@@ -309,11 +312,12 @@ void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunr
 }
 
 void processHttpGetRequest(
-  Config &config,
-  Data &data,
-  const String &requestPath) {
+    Config &config,
+    const String &requestPath)
+{
 
-  if (requestPath.startsWith("/Manuel")) {
+  if (requestPath.startsWith("/Manuel"))
+  {
     bool voilagesOpen = false;
     bool voilagesClose = false;
     bool rideauxOpen = false;
@@ -321,47 +325,59 @@ void processHttpGetRequest(
 
     int queryStartIndex = requestPath.indexOf('?') + 1;
 
-    while (queryStartIndex < requestPath.length()) {
+    while (queryStartIndex < requestPath.length())
+    {
       int labelEndIndex = requestPath.indexOf('=', queryStartIndex);
-      if (labelEndIndex == -1) break;
+      if (labelEndIndex == -1)
+        break;
 
       String label = requestPath.substring(queryStartIndex, labelEndIndex);
       int paramStartIndex = labelEndIndex + 1;
       int paramEndIndex = requestPath.indexOf('&', paramStartIndex);
-      if (paramEndIndex == -1) paramEndIndex = requestPath.length();
+      if (paramEndIndex == -1)
+        paramEndIndex = requestPath.length();
 
       String param = requestPath.substring(paramStartIndex, paramEndIndex);
       queryStartIndex = paramEndIndex + 1;
 
-      if (label.equals("mode-manuel-voilages-button")) {
+      if (label.equals("mode-manuel-voilages-button"))
+      {
         voilagesOpen = param.equals("open");
         voilagesClose = param.equals("close");
-      } else if (label.equals("mode-manuel-rideaux-button")) {
+      }
+      else if (label.equals("mode-manuel-rideaux-button"))
+      {
         rideauxOpen = param.equals("open");
         rideauxClose = param.equals("close");
-      } else if (label.equals("mode-manuel-motor-speed-slider")) {
+      }
+      else if (label.equals("mode-manuel-motor-speed-slider"))
+      {
         config.manualSpeed = param.toInt();
-     Serial.print("== Receieved Spped: ");
-     Serial.println(config.manualSpeed);
+        Serial.print("== Receieved Spped: ");
+        Serial.println(config.manualSpeed);
       }
     }
 
-     Serial.println("== Motor Action");
+    Serial.println("== Motor Action");
     // Perform actions for voilages
-    if (voilagesOpen) openRideauManuel(1);
-    if (voilagesClose) closeRideauManuel(1);
+    if (voilagesOpen)
+      openRideauManuel(1);
+    if (voilagesClose)
+      closeRideauManuel(1);
 
     // Perform actions for rideaux
-    if (rideauxOpen) openRideauManuel(0);
-    if (rideauxClose) closeRideauManuel(0);
+    if (rideauxOpen)
+      openRideauManuel(0);
+    if (rideauxClose)
+      closeRideauManuel(0);
   }
-
 
   // Process auto configuration for rideaux or voilages
   bool isAutoRideaux = requestPath.startsWith("/Auto-Rideaux");
   bool isAutoVoilage = requestPath.startsWith("/Auto-Voilage");
 
-  if (isAutoRideaux || isAutoVoilage) {
+  if (isAutoRideaux || isAutoVoilage)
+  {
     int curtainIndex = isAutoVoilage ? 1 : 0;
     String prefix = isAutoVoilage ? "voilages" : "rideaux";
 
@@ -370,36 +386,52 @@ void processHttpGetRequest(
 
     int queryStartIndex = requestPath.indexOf('?') + 1;
 
-    while (queryStartIndex < requestPath.length()) {
+    while (queryStartIndex < requestPath.length())
+    {
       int labelEndIndex = requestPath.indexOf('=', queryStartIndex);
-      if (labelEndIndex == -1) break;
+      if (labelEndIndex == -1)
+        break;
 
       String label = requestPath.substring(queryStartIndex, labelEndIndex);
       int paramStartIndex = labelEndIndex + 1;
       int paramEndIndex = requestPath.indexOf('&', paramStartIndex);
-      if (paramEndIndex == -1) paramEndIndex = requestPath.length();
+      if (paramEndIndex == -1)
+        paramEndIndex = requestPath.length();
 
       String param = requestPath.substring(paramStartIndex, paramEndIndex);
       queryStartIndex = paramEndIndex + 1;
 
-      if (label.equals(prefix + "-switch")) {
+      if (label.equals(prefix + "-switch"))
+      {
         config.rideau[curtainIndex].isEnabled = param.equals("on");
-      } else if (label.equals(prefix + "-opening-radio")) {
+      }
+      else if (label.equals(prefix + "-opening-radio"))
+      {
         bool isOpenAtSunrise = param.equals("sun");
         config.rideau[curtainIndex].isOpenAtSunrise = isOpenAtSunrise;
         config.rideau[curtainIndex].isOpenAtTime = !isOpenAtSunrise;
-      } else if (label.equals(prefix + "-open-at-time")) {
+      }
+      else if (label.equals(prefix + "-open-at-time"))
+      {
         config.rideau[curtainIndex].openAtTime = param.substring(0, 2).toInt() * 60 + param.substring(5).toInt();
-      } else if (label.equals("openSpeed")) {
-        config.rideau[curtainIndex].openingSpeed  = param.toInt();
-      } else if (label.equals(prefix + "-closing-radio")) {
+      }
+      else if (label.equals("openSpeed"))
+      {
+        config.rideau[curtainIndex].openingSpeed = param.toInt();
+      }
+      else if (label.equals(prefix + "-closing-radio"))
+      {
         bool isCloseAtSunset = param.equals("sun");
         config.rideau[curtainIndex].isCloseAtSunset = isCloseAtSunset;
         config.rideau[curtainIndex].isCloseAtTime = !isCloseAtSunset;
-      } else if (label.equals(prefix + "-close-at-time")) {
+      }
+      else if (label.equals(prefix + "-close-at-time"))
+      {
         config.rideau[curtainIndex].closeAtTime = param.substring(0, 2).toInt() * 60 + param.substring(5).toInt();
-      } else if (label.equals("closeSpeed")) {
-        config.rideau[curtainIndex].closingSpeed  = param.toInt();
+      }
+      else if (label.equals("closeSpeed"))
+      {
+        config.rideau[curtainIndex].closingSpeed = param.toInt();
       }
     }
 
@@ -565,37 +597,47 @@ void processHttpGetRequest(
 }
 */
 
-void htmlRun(class Config &config, class Data &data, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)()) {
+void htmlRun(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)())
+{
 
-  if (client) {                   // if you get a client,
-    String currentLine = "";      // make a String to hold incoming data from the client
-    while (client.connected()) {  // loop while the client's connected
-      if (client.available()) {   // if there's bytes to read from the client,
-        char c = client.read();   // read a byte, then
-      //  Serial.write(c);          // print it out the serial monitor
-        if (c == '\n') {          // if the byte is a newline character
+  if (client)
+  {                          // if you get a client,
+    String currentLine = ""; // make a String to hold incoming data from the client
+    while (client.connected())
+    { // loop while the client's connected
+      if (client.available())
+      {                         // if there's bytes to read from the client,
+        char c = client.read(); // read a byte, then
+                                //  Serial.write(c);          // print it out the serial monitor
+        if (c == '\n')
+        { // if the byte is a newline character
 
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
+          if (currentLine.length() == 0)
+          {
 
             generateHtmlPage(config, getTimeStr, getSunrise, getSunset);
 
             // break out of the while loop:
             break;
-          } else {  // if you got a newline, then clear currentLine:
-                    // GET /S HTTP/1.1
+          }
+          else
+          { // if you got a newline, then clear currentLine:
+            // GET /S HTTP/1.1
             if (currentLine.startsWith("GET "))
-              processHttpGetRequest(config, data, currentLine.substring(4));
+              processHttpGetRequest(config, currentLine.substring(4));
             currentLine = "";
           }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
+        }
+        else if (c != '\r')
+        {                   // if you got anything else but a carriage return character,
+          currentLine += c; // add it to the end of the currentLine
         }
       }
     }
     // close the connection:
     client.stop();
-//    Serial.println("client disconnected");
+    //    Serial.println("client disconnected");
   }
 }

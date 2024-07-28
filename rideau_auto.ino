@@ -14,118 +14,40 @@
 #include "AsyncTimer.h"
 #include "HX711.h"
 
-// HX711 circuit wiring
-const int LOADCELL_DOUT_PIN  = 6;  // Used by HX711 to mesure the tention
-const int LOADCELL_SCK_PIN  = 7; // Used by HX711 to mesure the tention
+#include "utility.h"
 
+#include "configurationFile.h"
+
+// Declaration of all module needed
 HX711 scale;
 
-
-class Data data;
-class Config config;
-
-
-
-WiFiServer server(80);  // server socket
+WiFiServer server(80); // server socket
 WiFiClient client = server.available();
 
+// Allow to reach the Ardurino by http://rideau.local
 WiFiUDP mdnsUDP;
 MDNS mdns(mdnsUDP);
+
 SunSet sun;
 
+// Prevents the rideau from opening or closing indefinitely in case of an issue.
 class AsyncTimer timer;
 
-int ropeTention = 0;
-int prevRopeTention = 0;
+class ElectricCurtainAndSheerController controller(WIFI_SSID,
+                                                   WIFI_PASSWORD);
+class Config config;
 
-// utility function for digital clock display: prints leading 0
-String twoDigits(int digits) {
-  if (digits < 10) {
-    String i = '0' + String(digits);
-    return i;
-  } else {
-    return String(digits);
-  }
-}
+int ropeTentionCur = 0;
+int ropeTentionPrev = 0;
 
-time_t int2time_t(int in) {
-
-  int today = day();
-  time_t out;
-
-  struct tm tmTime;
-  tmTime.tm_sec = 0;
-  tmTime.tm_min = in % 60;
-  tmTime.tm_hour = in / 60;
-  tmTime.tm_mday = today;
-  tmTime.tm_mon = month() - 1;
-  tmTime.tm_year = year() - 1900;
-  tmTime.tm_isdst = false;
-
-  // Date should be in future, never in past
-  do {
-    tmTime.tm_mday = today;
-    out = mktime(&tmTime);
-    today++;
-  } while (out < now());
-
-  return (out);
-}
-
-void closeRideauManuel(int idx) {
-  data.motorRideau[idx].action(Motor::REVERSE, config.manualSpeed);
-}
-
-void openRideauManuel(int idx) {
-  data.motorRideau[idx].action(Motor::FOWARD, config.manualSpeed);
-}
-
-void closeRideauAuto(int idx) {
-  timer.cancel(data.closeTimerId[idx]);
-
-  if (config.rideau[idx].isCloseAtSunset)
-    data.closeTimerId[idx] = timer.setTimeout([idx]() {closeRideauManuel(idx); closeRideauAuto(idx);}, int2time_t(static_cast<int>(sun.calcSunset())));
-
-  if (config.rideau[idx].isCloseAtTime)
-    data.closeTimerId[idx] = timer.setTimeout([idx]() {closeRideauManuel(idx); closeRideauAuto(idx);}, int2time_t(config.rideau[idx].closeAtTime));
-}
-
-void openRideauAuto(int idx) {
-  timer.cancel(data.openTimerId[idx]);
-
-  if (config.rideau[idx].isOpenAtSunrise)
-    data.openTimerId[idx] = timer.setTimeout([idx]() {openRideauManuel(idx); openRideauAuto(idx);}, int2time_t(static_cast<int>(sun.calcSunrise())));
-
-  if (config.rideau[idx].isOpenAtTime)
-    data.openTimerId[idx] = timer.setTimeout([idx]() {openRideauManuel(idx); openRideauAuto(idx);}, int2time_t(config.rideau[idx].openAtTime));
-}
-
-
-char* getTimeStr() {
-  static char timeString[255];
-  sprintf(timeString, "%d/%d/%d  %d:%02d:%02d", day(), month(), year(), hour(), minute(), second());
-  return timeString;
-}
-
-int getSunrise() {
-  sun.setCurrentDate(year(), month(), day());
-  return (static_cast<int>(sun.calcSunrise()));
-}
-
-int getSunset() {
-  sun.setCurrentDate(year(), month(), day());
-  return (static_cast<int>(sun.calcSunset()));
-}
-
-
-
-void setup() {
+void setup()
+{
   Serial.begin(57600);
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
 
-  data.motorRideau[0].setup();
+  controller.setup();
 
-  while (!Serial);
+  // while (!Serial);
   Serial.println("Serial ready");
 
   wifiEnable();
@@ -133,67 +55,64 @@ void setup() {
   server.begin();
   wifiPrintStatus();
 
-  // Initialize the mDNS library. You can now reach via the host name "rideau.local"
+  // Initialize the mDNS library.
+  // You can now reach via the host name "rideau.local"
   // Always call this before any other method!
-  mdns.begin(WiFi.localIP(), "rideau");
+  mdns.begin(WiFi.localIP(), MDNS_NAME);
   Serial.println("Server mdns ready");
-
+  Serial.print("http://");
+  Serial.print(MDNS_NAME);
+  Serial.println(".local");
 
   /* Get our time sync started */
   /* Set our position and a default timezone value */
   sun.setPosition(config.latitude, config.longitude, config.daylightSavingOffset);
   sun.setTZOffset(config.daylightSavingOffset);
 
+  // Retreive the time from internet
   // https://playground.arduino.cc/Code/Time/
   Serial.println("Request NTP");
   setSyncProvider(getNtpTime);
   setSyncInterval(60 * 60);
+  {
+    char timeString[255];
+    sprintf(timeString, "Date: %d/%d/%d", day(), month(), year());
+    Serial.println(timeString);
 
-  char timeString[255];
-  sprintf(timeString, "Date: %d/%d/%d", day(), month(), year());
-  Serial.println(timeString);
-
-  sprintf(timeString, "Heure: %d:%02d:%02d", hour(), minute(), second());
-  Serial.println(timeString);
-
-
-//  Serial.println("Set tention reader to zero.");
-//  Serial.print(" Readings: ");
-//  Serial.println(scale.get_value());
-  //scale.tare();
-
+    sprintf(timeString, "Heure: %d:%02d:%02d", hour(), minute(), second());
+    Serial.println(timeString);
+  }
 }
 
-void loop() {
-
+void loop()
+{
   // Read the rope tention
- if (scale.is_ready())
- {
-    prevRopeTention = ropeTention;
-    ropeTention = int(scale.get_value()/500);
-    Serial.println(ropeTention);
- }
-
-  client = server.available();
-  if (client) {
-    Serial.println("Client connected");
-
-        htmlRun(config, data, getTimeStr, getSunrise, getSunset);
+  if (scale.is_ready())
+  {
+    ropeTentionPrev = ropeTentionCur;
+    ropeTentionCur = int(scale.get_value() / 500);
+    Serial.println(ropeTentionCur);
   }
 
-  // This actually runs the Bonjour module. YOU HAVE TO CALL THIS PERIODICALLY,
-  // OR NOTHING WILL WORK! Preferably, call it once per loop().
+  client = server.available();
+  if (client)
+  {
+    Serial.println("Client connected");
+    htmlRun(config, getTimeStr, getSunrise, getSunset);
+  }
+
+  // This actually runs the Bonjour module.
+  // YOU HAVE TO CALL THIS PERIODICALLY, OR NOTHING WILL WORK!
+  // Preferably, call it once per loop().
   mdns.run();
 
-  data.motorRideau[0].run();
-  data.motorRideau[1].run();
-
-  static time_t prevTime;
+  controller.run();
 
   timer.handle(now());
 }
 
-void wifiPrintStatus() {
+void wifiPrintStatus()
+{
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
@@ -203,9 +122,9 @@ void wifiPrintStatus() {
   Serial.print("IP Address: ");
   Serial.println(ip);
 
-  // print the received signal strength:
+  // Display received signal strength:
   long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
+  Serial.print("Signal strength (RSSI): ");
   Serial.print(rssi);
   Serial.println(" dBm");
 
@@ -213,30 +132,75 @@ void wifiPrintStatus() {
   Serial.println(ip);
 }
 
-void wifiEnable() {
+void wifiEnable()
+{
   // check for the WiFi module:
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("Communication with WiFi module failed!");
+  if (WiFi.status() == WL_NO_MODULE)
+  {
+    Serial.println("Error: Communication with WiFi module failed!");
     // don't continue
     while (true)
       ;
   }
 
   String fv = WiFi.firmwareVersion();
-  if (fv < "1.0.0") {
+  if (fv < "1.0.0")
+  {
     Serial.println("Please upgrade the firmware");
   }
 }
 
-void wifiConnect() {
+void wifiConnect()
+{
   // attempt to connect to Wifi network:
-  while (data.webStatus != WL_CONNECTED) {
+  while (controller.m_webStatus != WL_CONNECTED)
+  {
     Serial.print("Attempting to connect to SSID: ");
-    Serial.println(config.ssid);
+    Serial.println(controller.m_wifiSsid);
+
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    data.webStatus = WiFi.begin(config.ssid, config.password);
+    controller.m_webStatus = WiFi.begin(controller.m_wifiSsid, controller.m_wifiPassword);
 
     // wait 10 seconds for connection:
     delay(10000);
   }
+}
+
+///////////////////////////////////////////////////////////////
+// Rideau action callback  ////////////////////////////////////
+// All action function to perform operations on the rideau
+void closeRideauManuel(int idx)
+{
+  controller.motorRideau[idx].action(Motor::REVERSE, config.manualSpeed);
+}
+
+void openRideauManuel(int idx)
+{
+  controller.motorRideau[idx].action(Motor::FOWARD, config.manualSpeed);
+}
+
+void closeRideauAuto(int idx)
+{
+  timer.cancel(controller.closeTimerId[idx]);
+
+  if (config.rideau[idx].isCloseAtSunset)
+    controller.closeTimerId[idx] = timer.setTimeout([idx]()
+                                                    {closeRideauManuel(idx); closeRideauAuto(idx); }, int2time_t(static_cast<int>(sun.calcSunset())));
+
+  if (config.rideau[idx].isCloseAtTime)
+    controller.closeTimerId[idx] = timer.setTimeout([idx]()
+                                                    {closeRideauManuel(idx); closeRideauAuto(idx); }, int2time_t(config.rideau[idx].closeAtTime));
+}
+
+void openRideauAuto(int idx)
+{
+  timer.cancel(controller.openTimerId[idx]);
+
+  if (config.rideau[idx].isOpenAtSunrise)
+    controller.openTimerId[idx] = timer.setTimeout([idx]()
+                                                   {openRideauManuel(idx); openRideauAuto(idx); }, int2time_t(static_cast<int>(sun.calcSunrise())));
+
+  if (config.rideau[idx].isOpenAtTime)
+    controller.openTimerId[idx] = timer.setTimeout([idx]()
+                                                   {openRideauManuel(idx); openRideauAuto(idx); }, int2time_t(config.rideau[idx].openAtTime));
 }
