@@ -91,7 +91,7 @@ void loop()
   {
     ropeTentionPrev = ropeTentionCur;
     ropeTentionCur = int(scale.get_value() / 500);
-    Serial.println(ropeTentionCur);
+//    Serial.println(ropeTentionCur);
   }
 
   client = server.available();
