@@ -35,8 +35,8 @@
 // Pin 1 - wire yellow - motor control
 // Pin 2 - wire green  - motor control
 #define MOTOR_1_PIN_ENA 0
-#define MOTOR_1_PIN1    1
-#define MOTOR_1_PIN2    2
+#define MOTOR_1_PIN1    2
+#define MOTOR_1_PIN2    1
 
 // Motor 2 connection
 // Pin 3 - wire blue    - Used to control the speed 
@@ -46,7 +46,7 @@
 #define MOTOR_2_PIN1    4
 #define MOTOR_2_PIN2    5
 
-#define MAX_TENTION_TRESHOLD 100
+#define MAX_TENTION_TRESHOLD 90
 
 // HX711 circuit wiring
 // Used by HX711 to measure the tention

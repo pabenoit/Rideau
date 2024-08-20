@@ -75,6 +75,7 @@ void AsyncTimer::handle(time_t sec)
   {
     if (m_callsArray[i].active == 1)
     {
+#if 0
       if (oldSec != sec)
       {
         Serial.print("  ");
@@ -84,6 +85,7 @@ void AsyncTimer::handle(time_t sec)
         Serial.print("  -  ");
         Serial.println(m_callsArray[i].timestamp - sec);
       }
+ #endif     
     }
 
     if (!m_callsArray[i].active || m_callsArray[i].timestamp > sec)

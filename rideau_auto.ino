@@ -43,17 +43,20 @@ int ropeTentionPrev = 0;
 void setup()
 {
   Serial.begin(57600);
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
 
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   controller.setup();
 
-  // while (!Serial);
+//  while (!Serial);
   Serial.println("Serial ready");
 
   wifiEnable();
+  listNetworks();
   wifiConnect();
   server.begin();
   wifiPrintStatus();
+
+
 
   // Initialize the mDNS library.
   // You can now reach via the host name "rideau.local"
@@ -91,7 +94,7 @@ void loop()
   {
     ropeTentionPrev = ropeTentionCur;
     ropeTentionCur = int(scale.get_value() / 500);
-//    Serial.println(ropeTentionCur);
+    Serial.println(ropeTentionCur);
   }
 
   client = server.available();
@@ -148,7 +151,37 @@ void wifiEnable()
   {
     Serial.println("Please upgrade the firmware");
   }
+
 }
+
+
+
+void listNetworks() {
+  // scan for nearby networks:
+  Serial.println("** Scan Networks **");
+  int numSsid = WiFi.scanNetworks();
+  if (numSsid == -1) {
+    Serial.println("Couldn't get a WiFi connection");
+    while (true);
+  }
+
+  // print the list of networks seen:
+  Serial.print("number of available networks:");
+  Serial.println(numSsid);
+
+  // print the network number and name for each network found:
+  for (int thisNet = 0; thisNet < numSsid; thisNet++) {
+    Serial.print(thisNet);
+    Serial.print(") ");
+    Serial.print(WiFi.SSID(thisNet));
+    Serial.print("\tSignal: ");
+    Serial.print(WiFi.RSSI(thisNet));
+    Serial.println(" dBm");
+//    Serial.print("\tEncryption: ");
+//    printEncryptionType(WiFi.encryptionType(thisNet));
+  }
+}
+
 
 void wifiConnect()
 {
