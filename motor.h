@@ -1,36 +1,32 @@
-
 #ifndef MOTOR_H
 #define MOTOR_H
+
 #include <Arduino.h>
-#include <ezButton.h>
 
-extern int ropeTentionCur;
-extern int ropeTentionPrev;
+extern int ropeTensionCur;
 
-class Motor
-{
+class Motor {
 public:
-  enum MotorState
-  {
-    FOWARD,
+  enum MotorState {
+    FORWARD,
     REVERSE,
     STANDBY,
-    BREAK
+    BRAKE
   };
 
-  enum MotorAction
-  {
+  enum MotorAction {
     A_STOP,
-    A_FOWARD,
+    A_FORWARD,
     A_REVERSE
   };
 
 public:
-  Motor(uint16_t enA, uint16_t pin1, uint16_t pin2, float rideauTentionThreshold) : m_action(A_STOP),
-                                                                                    m_enA(enA),
-                                                                                    m_pin1(pin1),
-                                                                                    m_pin2(pin2),
-                                                                                    m_rideauTentionThreshold(rideauTentionThreshold) {}
+  Motor(uint16_t enA, uint16_t pin1, uint16_t pin2, float curtainTensionThreshold)
+    : m_action(A_STOP),
+      m_enA(enA),
+      m_pin1(pin1),
+      m_pin2(pin2),
+      m_curtainTensionThreshold(curtainTensionThreshold) {}
 
   void setup();
 
@@ -38,17 +34,17 @@ public:
 
   void run();
 
-  void setTentionThreshold(int tention) { m_rideauTentionThreshold = tention; }
-
-public:
-  enum MotorAction m_action;
-  uint32_t m_stopAt;
+  void setTensionThreshold(int tension) {
+    m_curtainTensionThreshold = tension;
+  }
 
 private:
+  enum MotorAction m_action;
+  uint32_t m_stopAt;
   uint16_t m_enA;
   uint16_t m_pin1;
   uint16_t m_pin2;
-  float m_rideauTentionThreshold;
+  float m_curtainTensionThreshold;
 };
 
 #endif

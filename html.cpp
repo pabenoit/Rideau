@@ -1,17 +1,24 @@
-#include <WiFiNINA.h>
-#include "html.h"
-#include "Motor.h"
-#include "configData.h"
 #include <string>
 #include <vector>
 #include <functional>
 
+#ifdef ARDUINO_UNOR4_WIFI
+#include <WiFiS3.h>
+#else
+#include <WiFiNINA.h>
+#endif
+
+#include "html.h"
+#include "Motor.h"
+#include "configData.h"
+
+
 extern WiFiClient client;
 
-extern void closeRideauManuel(int idx);
-extern void openRideauManuel(int idx);
-extern void closeRideauAuto(int idx);
-extern void openRideauAuto(int idx);
+extern void closeManualCurtain(int idx);
+extern void openManualCurtain(int idx);
+extern void closeAutoCurtain(int idx);
+extern void openAutoCurtain(int idx);
 
 // Using const, data should be write with the code simply.
 static const char MAIN_page_part1[] PROGMEM = R"""(
@@ -197,47 +204,8 @@ static const char MAIN_page_part1[] PROGMEM = R"""(
 
 )""";
 
-#if 0
-  <script>
-    let settings = {
-      motorSpeed: 100,
-      serverTime: '28/3/2024  15:42:53',
-      sunriseTime: '06:41',
-      sunsetTime: '19:17',
 
-      rideaux: {
-        rideauxSwitchOn: true,
-        opening: {
-          isSunrise: true,
 
-          isAtTime: false,
-          atTime: '07:00'
-        },
-        closing: {
-          isSunset: true,
-
-          isAtTime: false,
-          atTime: '22:00'
-        }
-      },
-      voilages: {
-        voilagesSwitchOn: false,
-        opening: {
-          isSunrise: true,
-
-          isAtTime: false,
-          atTime: '07:00'
-        },
-        closing: {
-          isSunset: true,
-
-          isAtTime: false,
-          atTime: '22:00'
-        }
-      }
-    }
-  </script>
-#endif
 static const char MAIN_page_part2[] PROGMEM = R"""(
    <script>
    //InitialiseSite
@@ -478,7 +446,7 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
     <!-- accordion -->
     <div class="accordion mb-5" id="accordionSettings">
       <!-- item 1 -->
-      <form method="get" action="/Auto-Rideaux" name="rideauxForm" onsubmit="return validateFormRideaux()"
+      <form method="post" action="/Auto-Rideaux" name="rideauxForm" onsubmit="return validateFormRideaux()"
         onreset="resetFormRideaux(event)">
         <div class="accordion-item">
           <h2 class="accordion-header">
@@ -492,7 +460,6 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
               <div class="form-check form-switch mx-3 mb-3">
                 <input class="form-check-input" type="checkbox" role="switch" onchange="toggleItemRideaux()"
                   id="rideauxSwitch" name="rideauxSwitch" checked>
-                <input type="hidden" name="rideauxSwitch" value="off">
                 <label class="form-check-label" for="rideauxSwitch">
                   On / Off
                 </label>
@@ -553,7 +520,7 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
         </div>
       </form>
       <!-- item 2 -->
-      <form method="get" action="/Auto-Voilages" name="voilagesForm" onsubmit="return validateFormVoilages()"
+      <form method="post" action="/Auto-Voilages" name="voilagesForm" onsubmit="return validateFormVoilages()"
         onreset="resetFormVoilages(event)">
         <div class="accordion-item">
           <h2 class="accordion-header">
@@ -625,7 +592,7 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
         </div>
       </form>
       <!-- item 3 -->
-      <form method="get" action="/Manuel" name="modeManuel" onsubmit="return validateFormModeManuel()">
+      <form method="post" action="/Manuel" name="modeManuel" onsubmit="return validateFormModeManuel()">
         <div class="accordion-item">
           <h2 class="accordion-header">
             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -697,7 +664,7 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
           <p class="text-body-secondary h6">
             Développement serveur par <strong class="text-body-emphasis">Pascal Benoit</strong><br>
             Développement web par <strong class="text-body-emphasis">Victor Benoit</strong> <br> <strong
-              class="text-body-emphasis">©Copyright 2024 Tous drois réservés</strong></p>
+              class="text-body-emphasis">©Copyright 2024 Tous droits réservés</strong></p>
         </div>
         <div class="container text-center">
           <div class="row align-items-center">
@@ -751,8 +718,15 @@ static const char MAIN_page_part2[] PROGMEM = R"""(
 
 
 
-void generateHtmlHeaderPage()
-{
+/**
+ * @brief Generates the HTTP header for an HTML page.
+ * 
+ * This function sends the HTTP header to the client, indicating a successful response (200 OK).
+ * It includes various headers such as cache control, content type, and connection settings.
+ * 
+ * @param client The WiFiClient object representing the client connection.
+ */
+void generateHtmlHeaderPage(WiFiClient client) {
   client.print("HTTP/1.1 200 OK\r\n");
   client.print("Vary: Origin\r\n");
   client.print("Access-Control-Allow-Credentials: true\r\n");
@@ -761,23 +735,31 @@ void generateHtmlHeaderPage()
   client.print("Last-Modified: Tue, 30 Jul 2024 21:05:15 GMT\r\n");
   client.print("ETag: W\"2363-19105762aa3\"\r\n");
   client.print("Content-Type: text/html; charset=UTF-8\r\n");
-  Serial.print("Content-Length: ");
-  Serial.print(sizeof(MAIN_page_part1));
-  Serial.print("\r\n");
   client.print("Date: Tue, 30 Jul 2024 21:46:23 GMT\r\n");
   client.print("Connection: keep-alive\r\n");
   client.print("Keep-Alive: timeout=5\r\n");
   client.print("\r\n");
 }
 
-void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)())
-{
-  
+/**
+ * @brief Generates the HTML page displaying user data.
+ * 
+ * This function generates and sends an HTML page to the client, displaying various user data
+ * such as motor speed, server time, sunrise and sunset times, and the status of the rideaux and voilages.
+ * 
+ * @param client The WiFiClient object representing the client connection.
+ * @param config The configuration object containing user settings.
+ * @param getTimeStr A function pointer that returns the current server time as a string.
+ * @param getSunrise A function pointer that returns the sunrise time in minutes since midnight.
+ * @param getSunset A function pointer that returns the sunset time in minutes since midnight.
+ */
+void generateUserDataHtmlPage(WiFiClient client, class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)()) {
+
   client.println("<script>");
   client.println("      let settings = {");
 
   // Display the user data in web page
-  client.println((String) "motorSpeed: '" + config.manualSpeed + "',");
+  client.println((String) "motorSpeed: '" + config.m_manualSpeed + "',");
   client.println((String) "serverTime: '" + getTimeStr() + "',");
 
   client.print("sunriseTime: '");
@@ -794,21 +776,17 @@ void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (
 
   client.print("\n");
 
-  for (int idx = 0; idx < 2; idx++)
-  {
-    if (idx == 0)
-    {
+  for (int idx = 0; idx < 2; idx++) {
+    if (idx == 0) {
       client.print("rideaux: {\n");
 
-      if (config.rideau[idx].isEnabled)
+      if (config.curtain[idx].isEnabled)
         client.print("rideauxSwitchOn: true,\n");
       else
         client.print("rideauxSwitchOn: false,\n");
-    }
-    else
-    {
+    } else {
       client.print("voilages: {\n");
-      if (config.rideau[idx].isEnabled)
+      if (config.curtain[idx].isEnabled)
         client.print("voilagesSwitchOn: true,\n");
       else
         client.print("voilagesSwitchOn: false,\n");
@@ -816,7 +794,7 @@ void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (
 
     client.print("opening: {\n");
 
-    if (config.rideau[idx].isOpenAtSunrise == true)
+    if (config.curtain[idx].isOpenAtSunrise == true)
       client.print("isSunrise: true,\n");
     else
       client.print("isSunrise: false,\n");
@@ -824,12 +802,12 @@ void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (
     client.print("// sunriseTime,\n");
     client.print("\n");
 
-    if (config.rideau[idx].isOpenAtTime == true)
+    if (config.curtain[idx].isOpenAtTime == true)
       client.print("isAtTime: true,\n");
     else
       client.print("isAtTime: false,\n");
 
-    int actionAtTime = config.rideau[idx].openAtTime;
+    int actionAtTime = config.curtain[idx].openAtTime;
     client.print("atTime: '");
     preformattedPage = (((actionAtTime / 60 < 10) ? "0" : "") + std::to_string(actionAtTime / 60) + ":" + ((actionAtTime % 60 < 10) ? "0" : "") + std::to_string(actionAtTime % 60));
     client.print(preformattedPage.data());
@@ -837,19 +815,19 @@ void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (
 
     client.print("},\n");
     client.print("closing: {\n");
-    if (config.rideau[idx].isCloseAtSunset == true)
+    if (config.curtain[idx].isCloseAtSunset == true)
       client.print("isSunset: true,\n");
     else
       client.print("isSunset: false,\n");
 
     client.print("// sunsetTime,\n");
     client.print("\n");
-    if (config.rideau[idx].isCloseAtTime == true)
+    if (config.curtain[idx].isCloseAtTime == true)
       client.print("isAtTime: true,\n");
     else
       client.print("isAtTime: false,\n");
 
-    actionAtTime = config.rideau[idx].closeAtTime;
+    actionAtTime = config.curtain[idx].closeAtTime;
     client.print("atTime: '");
     preformattedPage = (((actionAtTime / 60 < 10) ? "0" : "") + std::to_string(actionAtTime / 60) + ":" + ((actionAtTime % 60 < 10) ? "0" : "") + std::to_string(actionAtTime % 60));
     client.print(preformattedPage.data());
@@ -867,26 +845,35 @@ void generateUserDataHtmlPage(class Config &config, char *(*getTimeStr)(), int (
   client.print("</script>\n");
 }
 
-void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)())
-{
+/**
+ * @brief Handles the root URL request and generates the main HTML page.
+ * 
+ * This function is called when the root URL ("/") is requested. It generates the main HTML page
+ * by sending the header, user data, and footer sections to the client. The user data includes
+ * various settings and statuses retrieved from the provided configuration and callback functions.
+ * 
+ * @param config The configuration object containing user settings.
+ * @param getTimeStr A function pointer that returns the current server time as a string.
+ * @param getSunrise A function pointer that returns the sunrise time in minutes since midnight.
+ * @param getSunset A function pointer that returns the sunset time in minutes since midnight.
+ */
+void handleRoot(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)()) {
 
-  generateHtmlHeaderPage();
+  generateHtmlHeaderPage(client);
 
-  // Display First section of the web page
-  size_t sectionSize = sizeof(MAIN_page_part1);
-  for (int i = 0; i < (sectionSize - 1); i += 255)
-  {
-    client.write(&(MAIN_page_part1[i]), (sectionSize - i - 1) < 255 ? (sectionSize - i - 1) : 255);
+  // Display first section of the web page
+  const size_t sectionSize1 = sizeof(MAIN_page_part1);
+  for (unsigned int i = 0; i < (sectionSize1 - 1); i += 255) {
+    client.write(&(MAIN_page_part1[i]), (sectionSize1 - i - 1) < 255 ? (sectionSize1 - i - 1) : 255);
   }
 
-  // Display the user data in web page
-  generateUserDataHtmlPage(config, getTimeStr, getSunrise, getSunset);
+  // Display the user data in the web page
+  generateUserDataHtmlPage(client, config, getTimeStr, getSunrise, getSunset);
 
   // Display second section of the web page
-  sectionSize = sizeof(MAIN_page_part2);
-  for (int i = 0; i < (sectionSize - 1); i += 255)
-  {
-    client.write(&(MAIN_page_part2[i]), (sectionSize - i - 1) < 255 ? (sectionSize - i - 1) : 255);
+  const size_t sectionSize2 = sizeof(MAIN_page_part2);
+  for (unsigned int i = 0; i < (sectionSize2 - 1); i += 255) {
+    client.write(&(MAIN_page_part2[i]), (sectionSize2 - i - 1) < 255 ? (sectionSize2 - i - 1) : 255);
   }
 
   client.println("");
@@ -896,194 +883,277 @@ void generateHtmlPage(class Config &config, char *(*getTimeStr)(), int (*getSunr
   client.println();
 }
 
-void processHttpGetRequest(
-    Config &config,
-    const String &requestPath)
-{
 
-  if (requestPath.startsWith("/Manuel"))
-  {
-    bool voilagesOpen = false;
-    bool voilagesClose = false;
-    bool rideauxOpen = false;
-    bool rideauxClose = false;
-
-    int queryStartIndex = requestPath.indexOf('?') + 1;
-
-    while (queryStartIndex < requestPath.length())
-    {
-      int labelEndIndex = requestPath.indexOf('=', queryStartIndex);
-      if (labelEndIndex == -1)
-        break;
-
-      String label = requestPath.substring(queryStartIndex, labelEndIndex);
-      int paramStartIndex = labelEndIndex + 1;
-      int paramEndIndex = requestPath.indexOf('&', paramStartIndex);
-      if (paramEndIndex == -1)
-        paramEndIndex = requestPath.length();
-
-      String param = requestPath.substring(paramStartIndex, paramEndIndex);
-      queryStartIndex = paramEndIndex + 1;
-
-      if (label.equals("modeManuelVoilagesButton"))
-      {
-        voilagesOpen = param.equals("open");
-        voilagesClose = param.equals("close");
-        Serial.print("== Receieved: modeManuelVoilagesButton");
-        Serial.println(voilagesOpen);
-        Serial.println(voilagesClose);
-      }
-      else if (label.equals("modeManuelRideauxButton"))
-      {
-        rideauxOpen = param.equals("open");
-        rideauxClose = param.equals("close");
-        Serial.print("== Receieved: modeManuelRideauxButton");
-        Serial.println(rideauxOpen);
-        Serial.println(rideauxClose);
-      }
-      else if (label.equals("modeManuelMotorSpeedSlider"))
-      {
-        config.manualSpeed = param.toInt();
-        Serial.print("== Receieved Speed: ");
-        Serial.println(config.manualSpeed);
-      }
-    }
-
-    Serial.println("== Motor Action");
-    // Perform actions for voilages
-    if (voilagesOpen)
-    {
-      Serial.println("voilagesOpen");
-      openRideauManuel(1);
-    }
-    if (voilagesClose)
-    {
-      Serial.println("voilagesClose");
-      closeRideauManuel(1);
-    }
-
-    // Perform actions for rideaux
-    if (rideauxOpen)
-    {
-      Serial.println("rideauxOpen");
-      openRideauManuel(0);
-    }
-    if (rideauxClose)
-    {
-      Serial.println("rideauxClose");
-      closeRideauManuel(0);
-    }
+/**
+ * @brief Extracts the value associated with a given key from a query string.
+ * 
+ * This function searches for a specified key within an input query string and extracts the corresponding value.
+ * If the key is found, the value is stored in the provided reference and the function returns true.
+ * If the key is not found, the function returns false.
+ * 
+ * @param input The input query string to search within.
+ * @param key The key whose associated value is to be extracted.
+ * @param value A reference to a string where the extracted value will be stored.
+ * @return true if the key is found and the value is extracted successfully, false otherwise.
+ */
+bool getKeyValue(const std::string &input, const std::string key, std::string &value) {
+  size_t startPos = input.find(key);
+  if (startPos == std::string::npos) {
+    // Key not found
+    return false;
   }
 
-  // Process auto configuration for rideaux or voilages
-  bool isAutoRideaux = requestPath.startsWith("/Auto-Rideaux");
-  bool isAutoVoilage = requestPath.startsWith("/Auto-Voilage");
+  startPos += key.length();
+  size_t endPos = input.find('&', startPos);
 
-  if (isAutoRideaux || isAutoVoilage)
-  {
-    int curtainIndex = isAutoVoilage ? 1 : 0;
-    String prefix = isAutoVoilage ? "voilages" : "rideaux";
-
-    // Default value if not present
-    config.rideau[curtainIndex].isEnabled = false;
-
-    int queryStartIndex = requestPath.indexOf('?') + 1;
-
-    while (queryStartIndex < requestPath.length())
-    {
-      int labelEndIndex = requestPath.indexOf('=', queryStartIndex);
-      if (labelEndIndex == -1)
-        break;
-
-      String label = requestPath.substring(queryStartIndex, labelEndIndex);
-      int paramStartIndex = labelEndIndex + 1;
-      int paramEndIndex = requestPath.indexOf('&', paramStartIndex);
-      if (paramEndIndex == -1)
-        paramEndIndex = requestPath.length();
-
-      String param = requestPath.substring(paramStartIndex, paramEndIndex);
-      queryStartIndex = paramEndIndex + 1;
-
-      if (label.equals(prefix + "-switch"))
-      {
-        config.rideau[curtainIndex].isEnabled = param.equals("on");
-      }
-      else if (label.equals(prefix + "-opening-radio"))
-      {
-        bool isOpenAtSunrise = param.equals("sun");
-        config.rideau[curtainIndex].isOpenAtSunrise = isOpenAtSunrise;
-        config.rideau[curtainIndex].isOpenAtTime = !isOpenAtSunrise;
-      }
-      else if (label.equals(prefix + "-open-at-time"))
-      {
-        config.rideau[curtainIndex].openAtTime = param.substring(0, 2).toInt() * 60 + param.substring(5).toInt();
-      }
-      else if (label.equals("openSpeed"))
-      {
-        config.rideau[curtainIndex].openingSpeed = param.toInt();
-      }
-      else if (label.equals(prefix + "-closing-radio"))
-      {
-        bool isCloseAtSunset = param.equals("sun");
-        config.rideau[curtainIndex].isCloseAtSunset = isCloseAtSunset;
-        config.rideau[curtainIndex].isCloseAtTime = !isCloseAtSunset;
-      }
-      else if (label.equals(prefix + "-close-at-time"))
-      {
-        config.rideau[curtainIndex].closeAtTime = param.substring(0, 2).toInt() * 60 + param.substring(5).toInt();
-      }
-      else if (label.equals("closeSpeed"))
-      {
-        config.rideau[curtainIndex].closingSpeed = param.toInt();
-      }
-    }
-
-    openRideauAuto(curtainIndex);
-    closeRideauAuto(curtainIndex);
+  if (endPos == std::string::npos) {
+    // If no ampersand is found, take the rest of the string
+    endPos = input.length();
   }
+
+  value = input.substr(startPos, endPos - startPos);
+  return true;
 }
 
-void htmlRun(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)())
-{
 
-  if (client)
-  {                          // if you get a client,
-    String currentLine = ""; // make a String to hold incoming data from the client
-    while (client.connected())
-    { // loop while the client's connected
-      if (client.available())
-      {                         // if there's bytes to read from the client,
-        char c = client.read(); // read a byte, then
-                                //  Serial.write(c);          // print it out the serial monitor
-        if (c == '\n')
-        { // if the byte is a newline character
+/**
+ * @brief Handles manual control post requests.
+ * 
+ * This function processes the post data received from a manual control form. It extracts the values
+ * for voilages and rideaux control buttons, as well as the motor speed slider. Based on the extracted
+ * values, it performs the corresponding actions to open or close the voilages and rideaux.
+ * 
+ * @param postData The post data received from the manual control form.
+ * @param config The configuration object containing user settings, including the manual motor speed.
+ */
+void handleManualPost(std::string postData, Config &config) {
+  bool voilagesOpen = false;
+  bool voilagesClose = false;
+  bool rideauxOpen = false;
+  bool rideauxClose = false;
 
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0)
-          {
+  std::string value;
+  if (getKeyValue(postData, "modeManuelVoilagesButton=", value)) {
+    voilagesOpen = (value == "open");
+    voilagesClose = (value == "close");
+    Serial.print("== Received: modeManuelVoilagesButton");
+    Serial.println(voilagesOpen);
+    Serial.println(voilagesClose);
+  }
 
-            generateHtmlPage(config, getTimeStr, getSunrise, getSunset);
+  if (getKeyValue(postData, "modeManuelRideauxButton=", value)) {
+    rideauxOpen = (value == "open");
+    rideauxClose = (value == "close");
+    Serial.print("== Received: modeManuelRideauxButton");
+    Serial.println(rideauxOpen);
+    Serial.println(rideauxClose);
+  }
 
-            // break out of the while loop:
+  if (getKeyValue(postData, "modeManuelMotorSpeedSlider=", value)) {
+    config.m_manualSpeed = std::stoi(value);
+    Serial.print("== Received Speed: ");
+    Serial.println(config.m_manualSpeed);
+  }
+
+  Serial.println("== Motor Action");
+  // Perform actions for voilages
+  if (voilagesOpen) {
+    Serial.println("voilagesOpen");
+    openManualCurtain(1);
+  } else if (voilagesClose) {
+    Serial.println("voilagesClose");
+    closeManualCurtain(1);
+  }
+
+  // Perform actions for curtain
+  if (rideauxOpen) {
+    Serial.println("rideauxOpen");
+    openManualCurtain(0);
+  } else if (rideauxClose) {
+    Serial.println("rideauxClose");
+    closeManualCurtain(0);
+  }
+
+  config.writeCfg2Epprom();
+}
+
+
+
+/**
+ * @brief Handles the POST request for automatic rideaux control settings.
+ * 
+ * This function processes the POST data received from the automatic rideaux control form.
+ * It updates the configuration settings for the specified rideaux or voilage based on the form data.
+ * The settings include enabling/disabling the rideaux, setting the opening and closing times,
+ * and determining whether to open/close at sunrise/sunset or at a specific time.
+ * 
+ * @param index The index of the rideaux (0 for rideaux, 1 for voilage).
+ * @param postData The POST data received from the form.
+ * @param config The configuration object containing user settings.
+ */
+void handleAutoCurtainsPost(int index, std::string postData, Config &config) {
+  std::string prefix = (index == 0) ? "rideaux" : "voilage";
+
+  // Default value if not present
+  config.curtain[index].isEnabled = false;
+
+  std::string value;
+  if (getKeyValue(postData, prefix + "Switch=", value))
+    config.curtain[index].isEnabled = (value == "on");
+
+  if (getKeyValue(postData, prefix + "OpeningRadio=", value)) {
+    bool isOpenAtSunrise = (value == "sun");
+    config.curtain[index].isOpenAtSunrise = isOpenAtSunrise;
+    config.curtain[index].isOpenAtTime = !isOpenAtSunrise;
+  }
+
+  if (getKeyValue(postData, prefix + "OpenAtTime=", value)) {
+    config.curtain[index].openAtTime = std::stoi(value.substr(0, 2)) * 60 + std::stoi(value.substr(5, 2));
+  }
+
+  if (getKeyValue(postData, prefix + "ClosingRadio=", value)) {
+    bool isCloseAtSunset = (value == "sun");
+    config.curtain[index].isCloseAtSunset = isCloseAtSunset;
+    config.curtain[index].isCloseAtTime = !isCloseAtSunset;
+  }
+
+  if (getKeyValue(postData, prefix + "CloseAtTime=", value))
+    config.curtain[index].closeAtTime = std::stoi(value.substr(0, 2)) * 60 + std::stoi(value.substr(5, 2));
+
+  // Update configuration value with the EEPROM values.
+  config.writeCfg2Epprom();
+
+
+  // Apply the action
+  openAutoCurtain(index);
+  closeAutoCurtain(index);
+}
+
+
+///////////////////////
+///                 ///
+///  Server Section ///
+///                 ///
+///////////////////////
+
+/**
+ * @brief Extracts the content length from an HTTP header.
+ * 
+ * This function searches for the "Content-Length" key in the provided HTTP header string
+ * and extracts the corresponding value. If the key is found, it returns the content length as an integer.
+ * If the key is not found, it returns -1.
+ * 
+ * @param input The HTTP header string to search within.
+ * @return The content length as an integer if the key is found, -1 otherwise.
+ */
+int getContentLength(const std::string &input) {
+  const std::string key = "Content-Length: ";
+  size_t startPos = input.find(key);
+
+  if (startPos == std::string::npos) {
+    // Key not found
+    return -1;
+  }
+
+  startPos += key.length();
+  size_t endPos = input.find('\n', startPos);
+
+  if (endPos == std::string::npos) {
+    // If no newline is found, take the rest of the string
+    endPos = input.length();
+  }
+
+  std::string valueStr = input.substr(startPos, endPos - startPos);
+  return std::stoi(valueStr);
+}
+
+
+
+/**
+ * @brief Handles incoming HTTP requests and routes them to the appropriate handlers.
+ * 
+ * This function processes incoming HTTP requests from a client, determines the type of request (GET or POST),
+ * and routes it to the appropriate handler function. It reads the request headers and body, if present,
+ * and handles different routes such as the root page, page1, page2, Auto-Rideaux, Auto-Voilages, and Manuel.
+ * 
+ * @param config The configuration object containing user settings.
+ * @param getTimeStr A function pointer that returns the current server time as a string.
+ * @param getSunrise A function pointer that returns the sunrise time in minutes since midnight.
+ * @param getSunset A function pointer that returns the sunset time in minutes since midnight.
+ */
+void htmlRun(class Config &config, char *(*getTimeStr)(), int (*getSunrise)(), int (*getSunset)()) {
+  int contentLength = 0;
+  int contentRcv = 0;
+  if (client) {
+    Serial.println("New client connected");
+    String currentLine = "";
+    String postData = "";
+    bool isBody = false;
+    String request = "";
+
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+
+        if (isBody) {
+          // End of headers, start reading body
+          contentRcv++;
+          postData += c;
+
+          if (contentRcv >= contentLength) {
+            // Check if the body has been completely received
             break;
           }
-          else
-          { // if you got a newline, then clear currentLine:
-            // GET /S HTTP/1.1
-            if (currentLine.startsWith("GET "))
-              processHttpGetRequest(config, currentLine.substring(4));
-            currentLine = "";
+        } else {
+          // is header
+          request += c;
+
+          if (request.endsWith("\r\n\r\n")) {
+
+            if (request.startsWith("GET")) {
+              // GET request has no body
+              break;
+            } else if (request.startsWith("POST")) {
+              contentLength = getContentLength(request.c_str());
+              isBody = true;
+            }
           }
-        }
-        else if (c != '\r')
-        {                   // if you got anything else but a carriage return character,
-          currentLine += c; // add it to the end of the currentLine
         }
       }
     }
-    // close the connection:
+
+    // Process all WEB pages
+    if (request.startsWith("GET / ")) {
+      Serial.println("Get ROOT page");
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+
+    } else if (request.startsWith("GET /page1 ")) {
+      Serial.println("GET /page1");
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+
+    } else if (request.startsWith("POST /Auto-Rideaux ")) {
+      Serial.println("POST /Auto-Rideaux");
+      handleAutoCurtainsPost(0, postData.c_str(), config);
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+
+    } else if (request.startsWith("POST /Auto-Voilages ")) {
+      Serial.println("POST /Auto-Voilages");
+      handleAutoCurtainsPost(1, postData.c_str(), config);
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+
+    } else if (request.startsWith("POST /Manuel ")) {
+      Serial.println("POST /Manuel");
+      handleManualPost(postData.c_str(), config);
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+
+    } else {
+      Serial.println("Get else");
+      Serial.println(request);
+      handleRoot(config, getTimeStr, getSunrise, getSunset);
+    }
+
+    // Close the connection
     client.stop();
-    //    Serial.println("client disconnected");
+    Serial.println("Client disconnected");
   }
 }
