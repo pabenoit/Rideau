@@ -14,7 +14,7 @@
 
 // Allows access to the web server using this domain name instead of an IP address
 // Example: http://rideau.local
-#define MDNS_NAME "rideau"
+#define MDNS_NAME "prideau"
 
 // Location used to calculate the sunrise and sunset for Montreal
 #define LATITUDE 45.508888
@@ -49,9 +49,9 @@
 // Pin 3 - wire blue    - Used to control the speed
 // Pin 4 - wire purple  - motor control
 // Pin 5 - wire white   - motor control
-#define MOTOR_PIN_ENA 5
-#define MOTOR_PIN1 6
-#define MOTOR_PIN2 7
+#define MOTOR2_PIN_ENA 5
+#define MOTOR2_PIN1 6
+#define MOTOR2_PIN2 7
 
 #define MAX_TENSION_THRESHOLD 20
 

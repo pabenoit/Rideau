@@ -13,9 +13,9 @@ public:
                             MOTOR1_PIN1,
                             MOTOR1_PIN2,
                             MAX_TENSION_THRESHOLD),
-                      Motor(MOTOR_PIN_ENA,
-                            MOTOR_PIN1,
-                            MOTOR_PIN2,
+                      Motor(MOTOR2_PIN_ENA,
+                            MOTOR2_PIN1,
+                            MOTOR2_PIN2,
                             MAX_TENSION_THRESHOLD) }),
       m_webStatus(WL_IDLE_STATUS) {
     strncpy(m_wifiSsid, wifiSsid, sizeof(m_wifiSsid));

@@ -14,7 +14,7 @@ void Motor::setup() {
   pinMode(m_pin1, OUTPUT);
   pinMode(m_pin2, OUTPUT);
 
-  action(STANDBY);
+  action(O_NONE, STANDBY);
 }
 
 /**
@@ -26,34 +26,34 @@ void Motor::setup() {
  * @param state The desired motor state (FORWARD, REVERSE, STANDBY, BRAKE).
  * @param power The power level (PWM value) to be applied to the motor.
  */
-void Motor::action(enum MotorState state, byte power) {
+void Motor::action(enum MotorOperation operation, enum MotorState state, byte power) {
+  m_operation = operation;
+
   // Send PWM signal to L298N
   switch (state) {
     case FORWARD:
-      Serial.print("FORWARD: ");
-      Serial.println(power);
-
       analogWrite(m_enA, power);
       digitalWrite(m_pin2, HIGH);
       digitalWrite(m_pin1, LOW);
       m_action = A_FORWARD;
-      m_stopAt = millis() + (5 * 60 * 100);
+      if (m_operation == O_NORMAL)
+        m_stopAt = millis() + (20 * 1000);
+      if (m_operation == O_REMOVE_TENTION)
+        m_stopAt = millis() + (500);
       break;
 
     case REVERSE:
-      Serial.print("REVERSE: ");
-      Serial.println(power);
-
       analogWrite(m_enA, power);
       digitalWrite(m_pin2, LOW);
       digitalWrite(m_pin1, HIGH);
       m_action = A_REVERSE;
-      m_stopAt = millis() + (5 * 60 * 100);
+      if (m_operation == O_NORMAL)
+        m_stopAt = millis() + (20 * 1000);
+      if (m_operation == O_REMOVE_TENTION)
+        m_stopAt = millis() + (500);
       break;
 
     case STANDBY:
-      Serial.println("STANDBY: ");
-
       analogWrite(m_enA, power);
       digitalWrite(m_pin1, LOW);
       digitalWrite(m_pin2, LOW);
@@ -61,8 +61,6 @@ void Motor::action(enum MotorState state, byte power) {
       break;
 
     case BRAKE:
-      Serial.println("BRAKE: ");
-
       analogWrite(m_enA, power);
       digitalWrite(m_pin1, HIGH);
       digitalWrite(m_pin2, HIGH);
@@ -80,12 +78,27 @@ void Motor::action(enum MotorState state, byte power) {
 void Motor::run() {
   // Stop after a specified time or if the tension increases and exceeds the threshold.
   // The tension should increase.
-  if ((m_action == A_FORWARD) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
-    action(BRAKE, 0);
+  if (m_operation == O_NORMAL)
+  {
+    if ((m_action == A_FORWARD) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
+    {
+      action(O_REMOVE_TENTION, REVERSE, 255);
+    }
+    else if ((m_action == A_REVERSE) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
+    {
+      action(O_REMOVE_TENTION, FORWARD, 255);
+    }
 
-  if ((m_action == A_REVERSE) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
-    action(BRAKE, 0);
-
-  //  if ((m_action == RUNNING) && (millis() > m_stopAt))
-  //    action(BRAKE, 0);
+  }
+  else if (m_operation == O_REMOVE_TENTION)
+  {
+    if ((m_action == A_FORWARD) && (millis() > m_stopAt))
+    {
+      action(O_NONE, BRAKE, 0);
+    }
+    else if ((m_action == A_REVERSE) && (millis() > m_stopAt))
+    {
+      action(O_NONE, BRAKE, 0);
+    }
+  }
 }

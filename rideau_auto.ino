@@ -142,7 +142,7 @@ void loop() {
   // Read the rope tention
   if (scale.is_ready()) {
     ropeTensionCur = int(scale.get_value() / 500);
-    Serial.println(ropeTensionCur);
+//    Serial.println(ropeTensionCur);
   }
 #else
   int value = analogRead(CURRENT_MEASUREMENT_PIN);
@@ -158,8 +158,8 @@ void loop() {
 
   ropeTensionCur = abs((avg / 20) - 510);
 
-  if (index == 0)
-    Serial.println(ropeTensionCur);
+//  if (index == 0)
+//    Serial.println(ropeTensionCur);
 
 #endif
 
@@ -302,7 +302,7 @@ void wifiConnect() {
  * @param idx The index of the curtain to be closed.
  */
 void closeManualCurtain(int idx) {
-  curtainController.m_motorCurtain[idx].action(Motor::REVERSE, config.m_manualSpeed);
+  curtainController.m_motorCurtain[idx].action(Motor::O_NORMAL, Motor::REVERSE, config.m_manualSpeed);
 }
 
 /**
@@ -313,7 +313,7 @@ void closeManualCurtain(int idx) {
  * @param idx The index of the curtain to be opened.
  */
 void openManualCurtain(int idx) {
-  curtainController.m_motorCurtain[idx].action(Motor::FORWARD, config.m_manualSpeed);
+  curtainController.m_motorCurtain[idx].action(Motor::O_NORMAL, Motor::FORWARD, config.m_manualSpeed);
 }
 
 /**
