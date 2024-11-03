@@ -75,6 +75,7 @@ void Motor::action(enum MotorOperation operation, enum MotorState state, byte po
  * This function checks the current motor action and stops the motor if the specified time has elapsed
  * or if the tension exceeds the threshold. It ensures the motor stops if the conditions are met.
  */
+#if 0
 void Motor::run() {
   // Stop after a specified time or if the tension increases and exceeds the threshold.
   // The tension should increase.
@@ -94,11 +95,29 @@ void Motor::run() {
   {
     if ((m_action == A_FORWARD) && (millis() > m_stopAt))
     {
-      action(O_NONE, BRAKE, 0);
+      action(O_NONE, STANDBY, 0);
     }
     else if ((m_action == A_REVERSE) && (millis() > m_stopAt))
     {
-      action(O_NONE, BRAKE, 0);
+      action(O_NONE, STANDBY, 0);
     }
   }
 }
+#else
+void Motor::run() {
+  // Stop after a specified time or if the tension increases and exceeds the threshold.
+  // The tension should increase.
+  if (m_operation == O_NORMAL)
+  {
+    if ((m_action == A_FORWARD) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
+    {
+      action(O_NONE, STANDBY, 0);
+    }
+    else if ((m_action == A_REVERSE) && ((millis() > m_stopAt) || (ropeTensionCur > m_curtainTensionThreshold)))
+    {
+      action(O_NONE, STANDBY, 0);
+    }
+
+  }
+}
+#endif

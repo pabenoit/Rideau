@@ -1,10 +1,6 @@
 // List of all default configuration variables
 // You only need to modify them here
 
-// NOTE: If you have version 1, measuring rope tension with load cell
-// #define LOAD_CELL
-// else it will use current measurement on analog pin
-
 // Use by EEPROM to verify data in flash match teh version
 #define VERSION 1
 
@@ -14,7 +10,7 @@
 
 // Allows access to the web server using this domain name instead of an IP address
 // Example: http://rideau.local
-#define MDNS_NAME "prideau"
+#define MDNS_NAME "frideau"
 
 // Location used to calculate the sunrise and sunset for Montreal
 #define LATITUDE 45.508888
@@ -53,14 +49,8 @@
 #define MOTOR2_PIN1 6
 #define MOTOR2_PIN2 7
 
-#define MAX_TENSION_THRESHOLD 20
+#define MAX_TENSION_THRESHOLD 25
 
-#ifdef LOAD_CELL
-// HX711 circuit wiring
-// Used by HX711 to measure the tension
-#define LOADCELL_DOUT_PIN 8
-#define LOADCELL_SCK_PIN 9
-#else
 // Use motor current to measure the tension
-#define CURRENT_MEASUREMENT_PIN A0
-#endif
+// ACS720 
+#define CURRENT_MEASUREMENT_PIN A5

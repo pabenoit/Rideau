@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <Arduino.h>
 #include <ArduinoMDNS.h>
 #include <WiFiUdp.h>
@@ -33,10 +35,6 @@
 ArduinoLEDMatrix matrix;
 #endif
 
-#ifdef LOAD_CELL
-HX711 scale;
-#endif
-
 
 WiFiServer server(80);
 WiFiClient client = server.available();
@@ -61,7 +59,6 @@ int ropeTensionCur = 0;
  * This function initializes the serial communication, load cell (if defined), curtain controller,
  * WiFi connection, mDNS service, and time synchronization. It performs the following tasks:
  * - Initializes the serial communication at 57600 baud rate.
- * - Sets up the load cell if the LOAD_CELL macro is defined.
  * - Calls the setup method of the curtain controller.
  * - Enables WiFi and connects to the network.
  * - Starts the web server and prints the WiFi status.
@@ -77,10 +74,6 @@ void setup() {
   matrix.loadSequence(LEDMATRIX_ANIMATION_STARTUP);
   matrix.begin();
   matrix.play(true);
-#endif
-
-#ifdef LOAD_CELL
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
 #endif
 
   // Update configuration value with the EEPROM values.
@@ -105,6 +98,10 @@ void setup() {
   Serial.print("Access the server at: http://");
   Serial.print(MDNS_NAME);
   Serial.println(".local");
+
+  // Need for iphone support
+  mdns.addServiceRecord("prideau._http", 80, MDNSServiceTCP);
+
 
   // Start time synchronization
   // Set the geographical position (latitude and longitude) and the default timezone offset
@@ -138,13 +135,6 @@ void setup() {
  */
 void loop() {
 
-#ifdef LOAD_CELL
-  // Read the rope tention
-  if (scale.is_ready()) {
-    ropeTensionCur = int(scale.get_value() / 500);
-//    Serial.println(ropeTensionCur);
-  }
-#else
   int value = analogRead(CURRENT_MEASUREMENT_PIN);
   static int average[20] = { 0 };
   static int index = 0;
@@ -158,14 +148,15 @@ void loop() {
 
   ropeTensionCur = abs((avg / 20) - 510);
 
-//  if (index == 0)
-//    Serial.println(ropeTensionCur);
 
-#endif
+  if (index == 0)
+    Serial.println(ropeTensionCur);
+
 
   client = server.available();
   if (client) {
     Serial.println("Client connected");
+
     htmlRun(config, getTimeStr, getSunrise, getSunset);
   }
 
@@ -293,6 +284,12 @@ void wifiConnect() {
   matrix.loadFrame(LEDMATRIX_EMOJI_HAPPY);
 #endif
 }
+
+
+void curtainPeriodic(void) {
+  curtainController.run();
+}
+
 
 /**
  * @brief Closes the curtain manually.
