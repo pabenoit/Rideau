@@ -2,177 +2,174 @@
 #define CONFIG_DATA_H
 
 #include <EEPROM.h>
-
-#include "Motor.h"
+#include "CurtainMotor.h"
 #include "configurationFile.h"
 
-class ConfigCurtain {
+class CurtainCfg {
 public:
-  ConfigCurtain()
-    : isEnabled(false),
-      isOpenAtSunrise(true),
-      isOpenAtTime(false),
-      openAtTime(DEFAULT_OPEN_TIME),
-      isCloseAtSunset(true),
-      isCloseAtTime(false),
-      closeAtTime(DEFAULT_CLOSE_TIME),
-      openingSpeed(OPENING_SPEED),
-      closingSpeed(CLOSING_SPEED) {
+  CurtainCfg()
+      : isEnabled(false),
+        isOpenAtSunrise(true),
+        isOpenAtTime(false),
+        openAtTime(DEFAULT_OPEN_TIME),
+        isCloseAtSunset(true),
+        isCloseAtTime(false),
+        closeAtTime(DEFAULT_CLOSE_TIME),
+        manualAction(NONE) {}
+
+  bool operator==(const CurtainCfg &other) const {
+    return (isEnabled == other.isEnabled &&
+            isOpenAtSunrise == other.isOpenAtSunrise &&
+            isCloseAtSunset == other.isCloseAtSunset &&
+            isOpenAtTime == other.isOpenAtTime &&
+            isCloseAtTime == other.isCloseAtTime &&
+            openAtTime == other.openAtTime &&
+            closeAtTime == other.closeAtTime);
   }
 
-  bool operator==(const ConfigCurtain &other) const {
-    return ((this->isEnabled == other.isEnabled) && (this->isOpenAtSunrise == other.isOpenAtSunrise) && (this->isCloseAtSunset == other.isCloseAtSunset) && (this->isOpenAtTime == other.isOpenAtTime) && (this->isCloseAtTime == other.isCloseAtTime) && (this->openAtTime == other.openAtTime) && (this->closeAtTime == other.closeAtTime) && (this->openingSpeed == other.openingSpeed) && (this->closingSpeed == other.closingSpeed));
-  };
+  bool operator!=(const CurtainCfg &other) const {
+    return !(*this == other);
+  }
 
-  bool operator!=(const ConfigCurtain &c) const {
-    return (!(*this == c));
-  };
+  char *debugDisplayConfig() {
+    static char text[512];
+    sprintf(text, "Feature status  (%s)\n\n"
+                  "Open At Sunrise (%s)\n"
+                  "Open At Time    (%s)\n"
+                  "open time       : %2d:%02d\n\n"
+                  "Close At Sunset (%s)\n"
+                  "Close At Time   (%s)\n"
+                  "Close time      : %2d:%02d\n\n",
+            isEnabled ? "enable" : "disable",
+            isOpenAtSunrise ? "enable" : "disable",
+            isOpenAtTime ? "enable" : "disable",
+            openAtTime / 60, openAtTime % 60,
+            isCloseAtSunset ? "enable" : "disable",
+            isCloseAtTime ? "enable" : "disable",
+            closeAtTime / 60, closeAtTime % 60);
+    return text;
+  }
 
   bool isEnabled;
-
   bool isOpenAtSunrise;
   bool isOpenAtTime;
   int openAtTime;
-
   bool isCloseAtSunset;
   bool isCloseAtTime;
   int closeAtTime;
 
-  int openingSpeed;
-  int closingSpeed;
+  enum ManualAction { NONE, OPEN, CLOSE } manualAction;
 };
 
 class Config {
 public:
   Config()
-    : m_manualSpeed(MANUAL_SPEED),
-      m_daylightSavingOffset(DAYLIGHT_SAVING_OFFSET),
-      m_latitude(LATITUDE),
-      m_longitude(LONGITUDE) {
-  }
+      : m_daylightSavingOffset(DAYLIGHT_SAVING_OFFSET),
+        m_latitude(LATITUDE),
+        m_longitude(LONGITUDE),
+        m_threshold(MAX_TENSION_THRESHOLD) {}
 
   bool operator==(const Config &other) const {
-    return ((this->curtain[0] == other.curtain[0]) && (this->curtain[1] == other.curtain[1]) && (this->m_manualSpeed == other.m_manualSpeed));
-  };
+    return (curtainCfg[0] == other.curtainCfg[0] &&
+            curtainCfg[1] == other.curtainCfg[1]);
+  }
 
   bool operator!=(const Config &other) const {
     return !(*this == other);
-  };
+  }
 
-  // Optimisation to save the EEPROM as it only allowed 1000000 write. 
-  // Only write if valued as changes.
-  template< typename T > void updateEeprom(int address, const T &sData) {
-    T rData;
-    EEPROM.get(address, rData);
-
-    if (rData != sData)
-      EEPROM.put(address, sData);
-  };
-
-  void writeCfg2Epprom(void) {
+  void writeCfg2Epprom() {
     int address = 0;
-    int idx;
-
     int version = VERSION;
     updateEeprom(address, version);
     address += sizeof(version);
 
-    updateEeprom(address, m_manualSpeed);
-    address += sizeof(m_manualSpeed);
+    updateEeprom(address, m_threshold);
+    address += sizeof(m_threshold);
 
-    Serial.print("write EEPRON m_manualSpeed:");
-    Serial.println(m_manualSpeed);
+    for (int idx = 0; idx < 2; ++idx) {
+      updateEeprom(address, curtainCfg[idx].isEnabled);
+      address += sizeof(curtainCfg[idx].isEnabled);
 
+      updateEeprom(address, curtainCfg[idx].isOpenAtSunrise);
+      address += sizeof(curtainCfg[idx].isOpenAtSunrise);
 
-    for (idx = 0; idx < 2; idx++) {
-      updateEeprom(address, curtain[idx].isEnabled);
-      address += sizeof(curtain[idx].isEnabled);
+      updateEeprom(address, curtainCfg[idx].isOpenAtTime);
+      address += sizeof(curtainCfg[idx].isOpenAtTime);
 
-      updateEeprom(address, curtain[idx].isOpenAtSunrise);
-      address += sizeof(curtain[idx].isOpenAtSunrise);
+      updateEeprom(address, curtainCfg[idx].openAtTime);
+      address += sizeof(curtainCfg[idx].openAtTime);
 
-      updateEeprom(address, curtain[idx].isOpenAtTime);
-      address += sizeof(curtain[idx].isOpenAtTime);
+      updateEeprom(address, curtainCfg[idx].isCloseAtSunset);
+      address += sizeof(curtainCfg[idx].isCloseAtSunset);
 
-      updateEeprom(address, curtain[idx].openAtTime);
-      address += sizeof(curtain[idx].openAtTime);
+      updateEeprom(address, curtainCfg[idx].isCloseAtTime);
+      address += sizeof(curtainCfg[idx].isCloseAtTime);
 
-      updateEeprom(address, curtain[idx].isCloseAtSunset);
-      address += sizeof(curtain[idx].isCloseAtSunset);
-
-      updateEeprom(address, curtain[idx].isCloseAtTime);
-      address += sizeof(curtain[idx].isCloseAtTime);
-
-      updateEeprom(address, curtain[idx].closeAtTime);
-      address += sizeof(curtain[idx].closeAtTime);
-
-      updateEeprom(address, curtain[idx].openingSpeed);
-      address += sizeof(curtain[idx].openingSpeed);
-
-      updateEeprom(address, curtain[idx].closingSpeed);
-      address += sizeof(curtain[idx].closingSpeed);
+      updateEeprom(address, curtainCfg[idx].closeAtTime);
+      address += sizeof(curtainCfg[idx].closeAtTime);
     }
-  };
+  }
 
-  void readCfg2Epprom(void) {
+  void readCfg2Epprom() {
     int address = 0;
-    int idx;
-
     int version = 0;
     EEPROM.get(address, version);
+    address += sizeof(version);
+
     if (version != VERSION) {
       Serial.println("WARNING: Data in EEPROM do not match the version.");
-      // Data can not be read as format is unknow for this version
       return;
     }
 
-    address += sizeof(version);
+    EEPROM.get(address, m_threshold);
+    address += sizeof(m_threshold);
 
-    EEPROM.get(address, m_manualSpeed);
-    address += sizeof(m_manualSpeed);
+    for (int idx = 0; idx < 2; ++idx) {
+      EEPROM.get(address, curtainCfg[idx].isEnabled);
+      address += sizeof(curtainCfg[idx].isEnabled);
 
-    Serial.print("read EEPRON m_manualSpeed:");
-    Serial.println(m_manualSpeed);
+      EEPROM.get(address, curtainCfg[idx].isOpenAtSunrise);
+      address += sizeof(curtainCfg[idx].isOpenAtSunrise);
 
-    for (idx = 0; idx < 2; idx++) {
-      EEPROM.get(address, curtain[idx].isEnabled);
-      address += sizeof(curtain[idx].isEnabled);
+      EEPROM.get(address, curtainCfg[idx].isOpenAtTime);
+      address += sizeof(curtainCfg[idx].isOpenAtTime);
 
-      EEPROM.get(address, curtain[idx].isOpenAtSunrise);
-      address += sizeof(curtain[idx].isOpenAtSunrise);
+      EEPROM.get(address, curtainCfg[idx].openAtTime);
+      address += sizeof(curtainCfg[idx].openAtTime);
 
-      EEPROM.get(address, curtain[idx].isOpenAtTime);
-      address += sizeof(curtain[idx].isOpenAtTime);
+      EEPROM.get(address, curtainCfg[idx].isCloseAtSunset);
+      address += sizeof(curtainCfg[idx].isCloseAtSunset);
 
-      EEPROM.get(address, curtain[idx].openAtTime);
-      address += sizeof(curtain[idx].openAtTime);
+      EEPROM.get(address, curtainCfg[idx].isCloseAtTime);
+      address += sizeof(curtainCfg[idx].isCloseAtTime);
 
-      EEPROM.get(address, curtain[idx].isCloseAtSunset);
-      address += sizeof(curtain[idx].isCloseAtSunset);
-
-      EEPROM.get(address, curtain[idx].isCloseAtTime);
-      address += sizeof(curtain[idx].isCloseAtTime);
-
-      EEPROM.get(address, curtain[idx].closeAtTime);
-      address += sizeof(curtain[idx].closeAtTime);
-
-      EEPROM.get(address, curtain[idx].openingSpeed);
-      address += sizeof(curtain[idx].openingSpeed);
-
-      EEPROM.get(address, curtain[idx].closingSpeed);
-      address += sizeof(curtain[idx].closingSpeed);
+      EEPROM.get(address, curtainCfg[idx].closeAtTime);
+      address += sizeof(curtainCfg[idx].closeAtTime);
     }
-  };
+  }
+
+  CurtainCfg *getCurtainCfg(int idx) {
+    return &curtainCfg[idx];
+  }
+
+private:
+  template <typename T>
+  void updateEeprom(int address, const T &sData) {
+    T rData;
+    EEPROM.get(address, rData);
+    if (rData != sData) {
+      EEPROM.put(address, sData);
+    }
+  }
+
 
 public:
-  class ConfigCurtain curtain[2];
-
-  int m_manualSpeed;
-
-  // Geographical and timezone information
+  CurtainCfg curtainCfg[2];
   int m_daylightSavingOffset;
   double m_latitude;
   double m_longitude;
+  int m_threshold;
 };
 
 #endif
