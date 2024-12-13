@@ -2,14 +2,10 @@
 #define UTILITY_H
 
 #include <time.h>
-#include <sunset.h>
 
-// Function prototypes
+
+
 time_t int2time_t(int in);
-char *getTimeStr();
-int getSunrise();
-int getSunset();
-
-extern SunSet sun;
+bool getSunriseSunset(double longitude, double latitude, int year, int month, int day, int timeZoneOffset, int &sunriseTime, int &sunsetTime);
 
 #endif  // UTILITY_H

@@ -1,0 +1,53 @@
+<html>
+    <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            
+
+      <script type="text/javascript">
+google.charts.load('current', {packages: ['corechart', 'line']});
+google.charts.setOnLoadCallback(drawCurveTypes);
+
+
+function drawCurveTypes() {
+      var data = new google.visualization.DataTable();
+      data.addColumn('number', 'X');
+      data.addColumn('number', 'Threshold');
+      data.addColumn('number', 'Courrant');
+
+      data.addRows([
+        [0,  40, 0],  [ 1, 40, 5],   [2, 40, 15],  [3, 40, 9],   [4, 40, 10],  [5, 40, 5],
+        [6,  40, 3],  [ 7, 40, 19],  [8, 40, 25],  [9, 40, 32], [10, 40, 24], [11, 40, 27],
+        [12, 40, 22], [13, 40, 32], [14, 40, 34], [15, 40, 39], [16, 40, 36], [17, 40, 40],
+        [18, 40, 44], [19, 40, 46], [20, 40, 34], [21, 40, 47], [22, 40, 48], [23, 40, 49],
+        [24, 40, 52], [25, 40, 42], [26, 40, 44], [27, 40, 43], [28, 40, 41], [29, 40, 45],
+        [30, 40, 47], [31, 40, 52], [32, 40, 53], [33, 40, 51], [34, 40, 54], [35, 40, 57],
+        [36, 40, 54], [37, 40, 50], [38, 40, 47], [39, 40, 53], [40, 40, 56], [41, 40, 57],
+        [42, 40, 55], [43, 40, 58], [44, 40, 59], [45, 40, 61], [46, 40, 61], [47, 40, 62],
+        [48, 40, 64], [49, 40, 60], [50, 40, 58], [51, 40, 57], [52, 40, 59], [53, 40, 62],
+        [54, 40, 63], [55, 40, 64], [56, 40, 65], [57, 40, 67], [58, 40, 62], [59, 40, 60],
+        [60, 40, 56], [61, 40, 52], [62, 40, 57], [63, 40, 59], [64, 40, 60], [65, 40, 61],
+        [66, 40, 62], [67, 40, 64], [68, 40, 67], [69, 40, 72]
+      ]);
+
+      var options = {
+        hAxis: {
+          title: 'Time'
+        },
+        vAxis: {
+          title: 'uAmp'
+        },
+        series: {
+          1: {curveType: 'function'}
+        }
+      };
+
+      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+    }
+    
+    </script>
+    </head>
+    <body>
+        <div id="chart_div" style="width: 90%; height: 90%"></div>
+    </body>
+  </html>

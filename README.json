@@ -1,0 +1,235 @@
+
+
+createDevice
+------------
+PUT
+{
+      'deviceName': 'Bedroom',
+}
+
+
+modifyDevice
+------------
+PATCH
+{
+  "deviceId": 1,
+  "properties": {
+    "deviceName": "BedroomSSS"
+  }
+}
+
+
+deleteDevice
+-------------
+DELETE
+{
+  "deviceId": 1,
+}
+
+
+createAutomation
+-----------------
+PUT
+{
+  "deviceId": 1,
+  "automation": {
+    "action": 0|1  -> open=0 | close=1
+    "type": 0|1    -> Specific_time=0 | sun=1
+    "time": "20:00"
+    "offset": -120|+120  // hour
+    "status": 0|1  -> enable=0 | disable=1
+  }
+}
+
+modifyAutomation
+-----------------
+PATCH
+{
+  "deviceId": 1,
+  "automation": {
+    "automationId": 10,
+    "action": 0|1  -> open=0 | close=1
+    "type": 0|1    -> Specific_time=0 | sun=1
+    "time": "20:00"
+    "offset": -120|+120  // hour
+    "status":  0|1  -> enable=0 | disable=1
+  }
+}
+
+
+deleteAutomation
+-----------------
+DELETE
+{
+  "deviceId": 1,
+  "automationId": 10
+}
+
+
+modifyConfig
+-------------
+PATCH
+{
+  "location": {
+    "longitude": 45.508888,
+    "latitude": -73.561668
+  },
+  "wifi": {
+    "ssid": "hghjgjk",
+    "password": "jkggkjhg",
+    "mdns": "dddddddddddddddddddddd"
+  }
+}
+
+
+GetAllInfo
+---------
+GET
+
+{
+  "location": {
+    "longitude": 44.510202,
+    "latitude": -73.564301
+  },
+  "wifi": {
+    "ssid": "HomeWiFi",
+    "password": "Password",
+    "mdns": "bedroom-curtains"
+  },
+  "devices": [
+    {
+      "deviceId": 0,     // Start 0
+      "deviceName": "Bedroom",
+      "automations": [
+        {
+          "automationId": 0,
+          "action": 0|1  -> open=0 | close=1
+          "type": 0|1    -> Specific_time=0 | sun=1
+          "time": "20:00"
+          "offset": -120|+120  // hour
+          "status":  0|1  -> enable=0 | disable=1
+        },
+        {
+          "automationId": 1,
+          "action": 0|1  -> open=0 | close=1
+          "type": 0|1    -> Specific_time=0 | sun=1
+          "time": "20:00"
+          "offset": -120|+120  // hour
+          "status":  0|1  -> enable=0 | disable=1
+        }
+      ]
+    },
+    {
+      "deviceId": 1,
+      "deviceName": "Salon",
+      "automations": [
+        {
+          "automationId": 0,
+          "action": 0|1  -> open=0 | close=1
+          "type": 0|1    -> Specific_time=0 | sun=1
+          "time": "20:00"
+          "offset": -120|+120  // hour
+          "status":  0|1  -> enable=0 | disable=1
+        },
+        {
+          "automationId": 1,
+          "action": 0|1  -> open=0 | close=1
+          "type": 0|1    -> Specific_time=0 | sun=1
+          "time": "20:00"
+          "offset": -120|+120  // hour
+          "status":  0|1  -> enable=0 | disable=1
+        }
+      ]
+    }
+  ]
+}
+
+Example of web page
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit and Patch JSON Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .json-container { border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9; }
+        .input-field { margin: 5px 0; }
+        button { margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h1>Edit Device Automation Details</h1>
+<div class="json-container" id="jsonDisplay">
+    Loading...
+</div>
+<button onclick="patchJsonData()">Save Changes</button>
+
+<script>
+    let jsonData = {};
+
+    // Function to fetch JSON data from the server
+    async function fetchJsonData() {
+        try {
+            const response = await fetch('/config');
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            jsonData = await response.json();
+            displayJsonData(jsonData);
+        } catch (error) {
+            document.getElementById('jsonDisplay').textContent = 'Error loading data: ' + error;
+        }
+    }
+
+    // Function to display JSON data with editable fields
+    function displayJsonData(data) {
+        const container = document.getElementById('jsonDisplay');
+        container.innerHTML = `
+            <div class="input-field">Device ID: <input type="text" id="deviceId" value="${data.deviceId}"></div>
+            <div class="input-field">Automation ID: <input type="text" id="automationId" value="${data.automation.automationId}"></div>
+            <div class="input-field">Action: <input type="text" id="action" value="${data.automation.action}"></div>
+            <div class="input-field">Type: <input type="text" id="type" value="${data.automation.type}"></div>
+            <div class="input-field">Time: <input type="text" id="time" value="${data.automation.time}"></div>
+            <div class="input-field">Offset: <input type="text" id="offset" value="${data.automation.offset}"></div>
+            <div class="input-field">Status: <input type="text" id="status" value="${data.automation.status}"></div>
+        `;
+    }
+
+    // Function to patch JSON data to the server
+    async function patchJsonData() {
+        // Update jsonData with values from input fields
+        jsonData.deviceId = document.getElementById('deviceId').value;
+        jsonData.automation.automationId = document.getElementById('automationId').value;
+        jsonData.automation.action = document.getElementById('action').value;
+        jsonData.automation.type = document.getElementById('type').value;
+        jsonData.automation.time = document.getElementById('time').value;
+        jsonData.automation.offset = document.getElementById('offset').value;
+        jsonData.automation.status = document.getElementById('status').value;
+
+        try {
+            const response = await fetch('/config', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            alert('Data successfully updated!');
+        } catch (error) {
+            alert('Error updating data: ' + error);
+        }
+    }
+
+    // Fetch and display the JSON data when the page loads
+    fetchJsonData();
+</script>
+
+</body>
+</html>
