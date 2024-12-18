@@ -2,7 +2,7 @@
 
 #include <Arduino_JSON.h>
 #include <TimeLib.h>
-#include <WiFiS3.h>
+#include <Wifi.h>
 
 #include "utility.h"
 

@@ -24,7 +24,15 @@ void logTension(uint32_t logTime, int value)
   static uint32_t lastLogTime = 0;
   if (logTime - lastLogTime > 150)
   {
-    tensionLog.push_back(std::make_pair(logTime, value));
+    try
+    {
+      tensionLog.push_back(std::make_pair(logTime, value));
+    }
+    catch (const std::bad_alloc &)
+    {
+      // Handle memory allocation failure
+      tensionLog.clear();
+    }
     lastLogTime = logTime;
   }
 }

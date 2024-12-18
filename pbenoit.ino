@@ -4,22 +4,22 @@
 #include <Arduino.h>
 #include <ArduinoMDNS.h>
 #include <TimeLib.h>
-#include <WiFiS3.h>
+#include <Wifi.h>
+
 #include <WiFiUdp.h>
 #include <math.h>
 //#include <sunset.h>
+
+// #include <INA219_WE.h>
+
 #include <Wire.h>
 
-#include <ArduinoGraphics.h>
-#include <Arduino_LED_Matrix.h>
+// #include <ArduinoGraphics.h>
+// #include <Arduino_LED_Matrix.h>
 
 #include "Configuration.h"
 #include "motorController.h"
 #include "utility.h"
-
-#if INA_219
-#include <INA219_WE.h>
-#endif
 
 // Hardware Connections
 // -------------------
@@ -45,14 +45,10 @@ int readCurrent();
 extern std::tuple<bool, int, int> handleHttpRequest();
 extern time_t getNtpTime();
 
-#if INA_219
-INA219_WE ina219 = INA219_WE();
-#endif
+// INA219_WE ina219 = INA219_WE();
 
 Motor motors[] = {Motor(MOTOR1_PIN1, MOTOR1_PIN2, getThreshold, readCurrent),
                   Motor(MOTOR2_PIN1, MOTOR2_PIN2, getThreshold, readCurrent)};
-
-ArduinoLEDMatrix matrix;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 WiFiClient myWifiClient;
@@ -71,12 +67,8 @@ int getThreshold() { return systemCfg.cfg.thresholdMaxCurrent; }
 
 int readCurrent()
 {
-#if INA_219
-  float current_mA = ina219.getCurrent_mA();
-#else
-  float current_mA = 0;
-#endif
-
+  // float current_mA = ina219.getCurrent_mA();
+  float current_mA = 1;
   return static_cast<int>(current_mA);
 
 #if 0
@@ -93,10 +85,10 @@ void setup()
   Serial.begin(115200);
   Serial.println("Starting...");
 
-  systemCfg.loadFromEEPROM();
-  Serial.println(systemCfg.GetAllInfo().c_str());
+//  systemCfg.loadFromEEPROM();
+//  Serial.println(systemCfg.GetAllInfo().c_str());
 
-#if 0
+#if 1
   systemCfg.cfg.wifi.ssid = "RFBP";
   systemCfg.cfg.wifi.password = "CE1736A5";
   systemCfg.cfg.wifi.mdns = "srideau";
@@ -141,46 +133,32 @@ void setup()
   Serial.println(systemCfg.GetAllInfo().c_str());
 
   Wire.begin();
-  
-#if INA219
-  if (!ina219.init())
-  {
-    Serial.println("INA219 not connected!");
-    while (1);
-  }
-  ////   ina219.setPGain(PG_80);
-  ina219.setBusRange(BRNG_16);
-  ina219.setADCMode(SAMPLE_MODE_128);  // choose mode and uncomment for change of default
-#endif
-
-  matrix.begin();
-  matrix.loadSequence(LEDMATRIX_ANIMATION_LOAD_CLOCK);
-  matrix.play(true);
+  // if (!ina219.init())
+  // {
+  //   Serial.println("INA219 not connected!");
+  //   while (1)
+  //     ;
+  // }
+  // ////   ina219.setPGain(PG_80);
+  // ina219.setBusRange(BRNG_16);
+  // ina219.setADCMode(SAMPLE_MODE_128);  // choose mode and uncomment for change of default
 
   motors[0].setup();
   motors[1].setup();
 
-  // Check for the WiFi module
-  if (WiFi.status() == WL_NO_MODULE)
-  {
-    Serial.println("Communication with WiFi module failed!");
-    while (true)
-      ;
-  }
-
-  matrix.loadSequence(LEDMATRIX_ANIMATION_WIFI_SEARCH);
-  matrix.play(true);
-
   // Attempt to connect to WiFi network
-  while (status != WL_CONNECTED)
-  {
-    Serial.println("Attempting to connect to SSID: ");
-    status = WiFi.begin(systemCfg.cfg.wifi.ssid.c_str(), systemCfg.cfg.wifi.password.c_str());
+  WiFi.begin(systemCfg.cfg.wifi.ssid.c_str(), systemCfg.cfg.wifi.password.c_str());
 
-    // Wait 1 seconds for connection
-    delay(1000);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
   }
 
+  Serial.println("");
+  Serial.println("WiFi connected.");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+    
   // Start the server
   server.begin();
   Serial.println("Server started");
@@ -204,9 +182,6 @@ void setup()
   String timeString = "Date: " + String(day()) + "/" + String(month()) + "/" + String(year()) +
                       " Time: " + String(hour()) + ":" + String(minute()) + ":" + String(second());
   Serial.println(timeString);
-
-  matrix.loadSequence(LEDMATRIX_ANIMATION_HEARTBEAT);
-  matrix.play(true);
 }
 
 void loop()

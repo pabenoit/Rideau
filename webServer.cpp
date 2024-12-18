@@ -1,16 +1,17 @@
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 
 #include <Arduino.h>
 #include <Arduino_JSON.h>
 #include <TimeLib.h>
-#include <WiFiS3.h>
+#include <WiFi.h>
 
 #include "Configuration.h"
 #include "utility.h"
 
-#include "index-DNSdRnKq.js.h"
-#include "index_html.h"
+//#include "index-DNSdRnKq.js.h"
+//#include "index_html.h"
 
 #define DEBUG 0  // Set to 0 to disable debug prints
 
@@ -701,11 +702,11 @@ void handleGet_index_html(WiFiClient &client)
   client.println("Content-Type: text/html");
   client.println("Content-Encoding: gzip");
   client.print("Content-Length: ");
-  client.println(index_html_gz_len );
+//  client.println(index_html_gz_len );
   client.println("Connection: close");
   client.println();
-  for (int i = 0; i < index_html_gz_len; i++)
-    client.write(index_html_gz[i]);
+//  for (int i = 0; i < index_html_gz_len; i++)
+//    client.write(index_html_gz[i]);
 }
 #endif
 
@@ -716,9 +717,9 @@ void handleGet_index_DNSdRnKq_js(WiFiClient &client)
   client.println("Content-Type: text/html");
   client.println("Content-Encoding: gzip");
   client.print("Content-Length: ");
-  client.println(index_DNSdRnKq_js_gz_len );
+//  client.println(index_DNSdRnKq_js_gz_len );
   client.println("Connection: close");
   client.println();
-  for (int i = 0; i < index_DNSdRnKq_js_gz_len; i++)
-    client.write(index_DNSdRnKq_js_gz[i]);
+//  for (int i = 0; i < index_DNSdRnKq_js_gz_len; i++)
+//    client.write(index_DNSdRnKq_js_gz[i]);
 }

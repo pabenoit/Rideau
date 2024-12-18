@@ -1,6 +1,6 @@
 
 #include <Arduino.h>
-#include "WiFiS3.h"
+#include "Wifi.h"
 
 #include <WiFiUdp.h>
 #include <TimeLib.h>
