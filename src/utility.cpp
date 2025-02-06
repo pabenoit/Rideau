@@ -6,6 +6,8 @@
 
 #include "utility.h"
 
+SunSet sun;
+
 time_t int2time_t(int in)
 {
   struct tm tmTime;
@@ -36,7 +38,7 @@ int parseTimeToMinutes(String timeStr)
   return hour * 60 + minute;
 }
 
-#if 0
+#if 1
 bool getSunriseSunset(double longitude,
                       double latitude,
                       int year,
@@ -54,6 +56,7 @@ bool getSunriseSunset(double longitude,
 return true;
 }
 
+#if 0
 /*
  * Calculates sunrise and sunset times based on current time. All times are in Unix Timestamp format.
  */
@@ -123,6 +126,7 @@ bool getSunriseSunset(double longitude,
 
   return true;
 }
+#endif
 #else
 
 bool getSunriseSunset(double longitude,

@@ -371,13 +371,17 @@ std::string Configuration::GetAllInfo()
   String timeString = String(hour()) + ":" + String(minute()) + ":" + String(second());
   root["time"] = timeString.c_str();
 
-  String sunsetText = String(sunSetOfTheday / 60) + ":" + String(sunSetOfTheday % 60);
+  String sunsetText = String(sunSetOfTheday / 60) + ":" + (sunSetOfTheday % 60  ? "0" : "") + String(sunSetOfTheday % 60);
   root["Sunset"] = sunsetText.c_str();
 
-  String sunriseText = String(sunRiseOfTheday / 60) + ":" + String(sunRiseOfTheday % 60);
+  String sunriseText = String(sunRiseOfTheday / 60) + ":" + (sunRiseOfTheday % 60 < 10 ? "0" : "") + String(sunRiseOfTheday % 60);
   root["Sunrise"] = sunriseText.c_str();
-
-  root["thresholdMaxCurrent"] = systemCfg.cfg.thresholdMaxCurrent;
+  
+  root["motorThresholdMax"] = systemCfg.cfg.motorThresholdMax;
+  root["motorThreshold"] = systemCfg.cfg.motorThreshold;
+  root["motorBlindTime"] = systemCfg.cfg.motorBlindTime;
+  root["motorRunTimeLimit"] = systemCfg.cfg.motorRunTimeLimit;
+  root["motorSpeed"] = systemCfg.cfg.motorSpeed;
   root["timeZoneOffset"] = systemCfg.cfg.timeZoneOffset;
 
   // Add "location" object
@@ -440,277 +444,6 @@ std::string Configuration::GetAllInfo()
   return result;
 }
 
-#if 0 
-// Function to save the Configuration class to EEPROM
-void Configuration::saveToEEPROM()
-{
-  Serial.println("Saving to EEPROM");
-  int addr = 0;
-
-  EEPROM.put(addr, cfg.thresholdMaxCurrent);
-  addr += sizeof(cfg.thresholdMaxCurrent);
-
-  EEPROM.put(addr, cfg.timeZoneOffset);
-  addr += sizeof(cfg.timeZoneOffset);
-
-  // Save location
-  EEPROM.put(addr, cfg.location.latitude);
-  addr += sizeof(cfg.location.latitude);
-
-  EEPROM.put(addr, cfg.location.longitude);
-  addr += sizeof(cfg.location.longitude);
-
-  // Save wifi
-  int nameLength = cfg.wifi.ssid.length();
-  EEPROM.put(addr, nameLength);
-  Serial.print("Write - ssid.length : ");
-  Serial.println(nameLength);
-
-  addr += sizeof(nameLength);
-
-  for (char c : cfg.wifi.ssid)
-  {
-    EEPROM.put(addr, c);
-    addr += sizeof(char);
-  }
-  
-  nameLength = cfg.wifi.password.length();
-  EEPROM.put(addr, nameLength);
-  addr += sizeof(nameLength);
-
-  for (char c : cfg.wifi.password)
-  {
-    EEPROM.put(addr, c);
-    addr += sizeof(char);
-  }
-    
-  nameLength = cfg.wifi.mdns.length();
-  EEPROM.put(addr, nameLength);
-  addr += sizeof(nameLength);
-
-  for (char c : cfg.wifi.mdns)
-  {
-    EEPROM.put(addr, c);
-    addr += sizeof(char);
-  }
-
-  // Save number of devices
-  int numDevices = cfg.devices.size();
-  EEPROM.put(addr, numDevices);
-  addr += sizeof(numDevices);
-
-  // Save each device
-  for (const auto &devicePair : cfg.devices)
-  {
-    int deviceId = devicePair.first;
-    const Device &device = devicePair.second;
-
-    // Save device ID
-    EEPROM.put(addr, deviceId);
-    addr += sizeof(deviceId);
-
-    // Save device name length and name
-    nameLength = device.name.length();
-    EEPROM.put(addr, nameLength);
-    addr += sizeof(nameLength);
-
-    for (char c : device.name)
-    {
-      EEPROM.put(addr, c);
-      addr += sizeof(char);
-    }
-
-    // Save number of automations
-    int numAutomations = device.automations.size();
-    EEPROM.put(addr, numAutomations);
-    addr += sizeof(numAutomations);
-
-    // Save each automation
-    for (const auto &automationPair : device.automations)
-    {
-      int automationId = automationPair.first;
-      const Automation &automation = automationPair.second;
-
-      // Save automation ID
-      EEPROM.put(addr, automationId);
-      addr += sizeof(automationId);
-
-      // Save automation data
-      EEPROM.put(addr, automation.action);
-      addr += sizeof(automation.action);
-
-      EEPROM.put(addr, automation.type);
-      addr += sizeof(automation.type);
-
-      int timeLength = automation.time.length();
-      EEPROM.put(addr, timeLength);
-
-      addr += sizeof(timeLength);
-      for (char c : automation.time)
-      {
-        EEPROM.put(addr, c);
-        addr += sizeof(char);
-      }
-
-      EEPROM.put(addr, automation.offset);
-      addr += sizeof(automation.offset);
-
-      EEPROM.put(addr, automation.status);
-      addr += sizeof(automation.status);
-    }
-  }
-
-  EEPROM.commit();
-}
-
-// Function to load the Configuration class from EEPROM
-void Configuration::loadFromEEPROM()
-{
-  Serial.println("Load to EEPROM");
-
-  int addr = 0;
-
-  EEPROM.get(addr, cfg.thresholdMaxCurrent);
-  addr += sizeof(cfg.thresholdMaxCurrent);
-
-  EEPROM.get(addr, cfg.timeZoneOffset);
-  addr += sizeof(cfg.timeZoneOffset);
-
-  // Load location
-  EEPROM.get(addr, cfg.location.latitude);
-  addr += sizeof(cfg.location.latitude);
-
-  EEPROM.get(addr, cfg.location.longitude);
-  addr += sizeof(cfg.location.longitude);
-
-  // Load wifi
-  int nameLength;
-  EEPROM.get(addr, nameLength);
-  addr += sizeof(nameLength);
-  cfg.wifi.ssid = "";
-  Serial.print("namelength : ");
-  Serial.println(nameLength);
-  Serial.print("char : ");
-  for (int j = 0; j < nameLength; ++j)
-  {
-    char c;
-    EEPROM.get(addr, c);
-    addr += sizeof(char);
-    cfg.wifi.ssid.push_back(c);
-    Serial.print(c);
-  }
-  Serial.println();
-  
-  EEPROM.get(addr, nameLength);
-  addr += sizeof(nameLength);
-  cfg.wifi.password = "";
-  Serial.print("namelength : ");
-  Serial.println(nameLength);
-  Serial.print("char : ");
-  for (int j = 0; j < nameLength; ++j)
-  {
-    char c;
-    EEPROM.get(addr, c);
-    addr += sizeof(char);
-    cfg.wifi.password.push_back(c);
-    Serial.print(c);
-  }
-   Serial.println();
-
-  EEPROM.get(addr, nameLength);
-  addr += sizeof(nameLength);
-  cfg.wifi.mdns = "";
-  Serial.print("namelength : ");
-  Serial.println(nameLength);
-  Serial.print("char : ");
-  for (int j = 0; j < nameLength; ++j)
-  {
-    char c;
-    EEPROM.get(addr, c);
-    addr += sizeof(char);
-    cfg.wifi.mdns.push_back(c);
-    Serial.print(c);
-  }
-  Serial.println();
-
-
-  // Load number of devices
-  int numDevices;
-  EEPROM.get(addr, numDevices);
-  addr += sizeof(numDevices);
-
-  // Load each device
-  for (int i = 0; i < numDevices; ++i)
-  {
-    int deviceId;
-    Device device;
-
-    // Load device ID
-    EEPROM.get(addr, deviceId);
-    addr += sizeof(deviceId);
-
-    // Load device name length and name
-    int nameLength;
-    EEPROM.get(addr, nameLength);
-
-    addr += sizeof(nameLength);
-    device.name = "";
-    for (int j = 0; j < nameLength; ++j)
-    {
-      char c;
-      EEPROM.get(addr, c);
-      addr += sizeof(char);
-      device.name.push_back(c);
-    }
-
-    // Load number of automations
-    int numAutomations;
-    EEPROM.get(addr, numAutomations);
-    addr += sizeof(numAutomations);
-
-    // Load each automation
-    for (int j = 0; j < numAutomations; ++j)
-    {
-      int automationId;
-      Automation automation;
-
-      // Save automation ID
-      EEPROM.get(addr, automationId);
-      addr += sizeof(automationId);
-
-      // Save automation data
-      EEPROM.get(addr, automation.action);
-      addr += sizeof(automation.action);
-
-      EEPROM.get(addr, automation.type);
-      addr += sizeof(automation.type);
-
-      int timeLength;
-      EEPROM.get(addr, timeLength);
-
-      addr += sizeof(timeLength);
-      automation.time = "";
-      for (int j = 0; j < timeLength; ++j)
-      {
-        char c;
-        EEPROM.get(addr, c);
-        addr += sizeof(char);
-        automation.time.push_back(c);
-      }
-
-      EEPROM.get(addr, automation.offset);
-      addr += sizeof(automation.offset);
-
-      EEPROM.get(addr, automation.status);
-      addr += sizeof(automation.status);
-
-      device.automations.insert(std::make_pair(automationId, automation));
-    }
-
-    cfg.devices.insert(std::make_pair(deviceId, device));
-  }
-}
-#endif
 
 // https://randomnerdtutorials.com/esp32-save-data-permanently-preferences/
 // Function to save the Configuration class to FLASH using Preferences
@@ -721,15 +454,20 @@ void Configuration::saveToFLASH() {
   // Increment flash write count
   unsigned int fwCount = preferences.getUInt("fwCount");
   preferences.putUInt("fwCount", ++fwCount);
+  preferences.end();
 
   preferences.begin("Config");
-  preferences.putInt("thrsCurMax", cfg.thresholdMaxCurrent);
-  preferences.putInt("tzOffset", cfg.timeZoneOffset);
+  preferences.putInt("mThrMax", cfg.motorThresholdMax);
+  preferences.putInt("mThr", cfg.motorThreshold);
+  preferences.putInt("mBlindT", cfg.motorBlindTime);
+  preferences.putInt("mRunTLimit", cfg.motorRunTimeLimit);
+  preferences.putInt("mSpeed", cfg.motorSpeed);
   preferences.end();
 
   preferences.begin("Location");
   preferences.putDouble("longitude", cfg.location.longitude); 
   preferences.putDouble("latitude", cfg.location.latitude); 
+  preferences.putInt("tzOffset", cfg.timeZoneOffset);
   preferences.end();
 
   preferences.begin("Wifi");
@@ -778,14 +516,18 @@ void Configuration::loadFromFLASH() {
   Serial.println("Loading from FLASH");
 
   preferences.begin("Config"); // Namespace for Config
-  cfg.thresholdMaxCurrent = preferences.getInt("thrsCurMax", 850);
-  cfg.timeZoneOffset = preferences.getInt("tzOffset", -5);
-  preferences.end();
+  cfg.motorThresholdMax = preferences.getInt("mThrMax", 1600);
+  cfg.motorThreshold = preferences.getInt("mThr", 850);
+  cfg.motorBlindTime = preferences.getInt("mBlindT", 150);
+  cfg.motorRunTimeLimit = preferences.getInt("mRunTLimit", 6000);
+  cfg.motorSpeed = preferences.getInt("mSpeed", 50);
+  preferences.end(); // End preferentces for Config
 
-  preferences.begin("Location");  // Namespace for location
+  preferences.begin("Location");  // Namespace for Location
   cfg.location.longitude = preferences.getDouble("longitude", 44.510202);
   cfg.location.latitude = preferences.getDouble("latitude", -73.564301);
-  preferences.end();  // End preferences for location
+  cfg.timeZoneOffset = preferences.getInt("tzOffset", -5);
+  preferences.end();  // End preferences for Location
 
   preferences.begin("Wifi");  // Namespace for WiFi
   cfg.wifi.ssid = preferences.getString("ssid", "RFBP").c_str();
@@ -834,64 +576,6 @@ void Configuration::loadFromFLASH() {
     systemCfg.cfg.devices.insert(std::make_pair(1, Device("Curtains")));
   }
 }
-
-
-#if 0
-void saveJSONToFile() {
-  // Create a JSON document (this could be dynamic depending on your needs)
-  StaticJsonDocument<200> doc;
-  doc["sensor"] = "temperature";
-  doc["value"] = 23.4;
-  doc["unit"] = "C";
-
-  // Open the file for writing (overwrite if it exists)
-  File file = SPIFFS.open(filePath, FILE_WRITE);
-  if (!file) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
-
-  // Serialize the JSON to the file
-  if (serializeJson(doc, file) == 0) {
-    Serial.println("Failed to write JSON to file");
-  } else {
-    Serial.println("JSON written to file successfully");
-  }
-
-  file.close();
-}
-
-void readJSONFromFile() {
-  // Open the file for reading
-  File file = SPIFFS.open(filePath, FILE_READ);
-  if (!file) {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
-
-  // Create a JSON document to store the data
-  StaticJsonDocument<200> doc;
-  DeserializationError error = deserializeJson(doc, file);
-  if (error) {
-    Serial.println("Failed to read JSON from file");
-  } else {
-    // Read values from the JSON object
-    const char* sensor = doc["sensor"];
-    float value = doc["value"];
-    const char* unit = doc["unit"];
-
-    // Print values to Serial Monitor
-    Serial.print("Sensor: ");
-    Serial.println(sensor);
-    Serial.print("Value: ");
-    Serial.println(value);
-    Serial.print("Unit: ");
-    Serial.println(unit);
-  }
-
-  file.close();
-}
-#endif
 
 void Configuration::IncrementBootCount()
 {

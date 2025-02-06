@@ -13,7 +13,7 @@ int readTension();
 
 class Motor
 {
- public:
+public:
   enum MotorAction
   {
     FORWARD,
@@ -23,8 +23,21 @@ class Motor
   };
 
   //    Motor(int pin1, int pin2) : m_pin1(pin1), m_pin2(pin2) {}
-  Motor(int pin1, int pin2, int speed, std::function<int()> getThresholdFunc, std::function<int()> readCurrentFunc)
-      : m_pin1(pin1), m_pin2(pin2), m_speed(speed), m_getThresholdFunc(getThresholdFunc), m_readCurrentFunc(readCurrentFunc)
+  Motor(int pin1, int pin2, int speed,
+        std::function<int()> getMotorThresholdMaxFunc,
+        std::function<int()> getMotorThresholdFunc,
+        std::function<int()> getMotorBlindTimeFunc,
+        std::function<int()> getMotorRunTimeLimitFunc,
+        std::function<int()> getMotorSpeedFunc,
+        std::function<int()> readCurrentFunc)
+      : m_pin1(pin1), m_pin2(pin2), m_speed(speed),
+
+        m_getMotorThresholdMaxFunc(getMotorThresholdMaxFunc),
+        m_getMotorThresholdFunc(getMotorThresholdFunc),
+        m_getMotorBlindTimeFunc(getMotorBlindTimeFunc),
+        m_getMotorRunTimeLimitFunc(getMotorRunTimeLimitFunc),
+        m_getMotorSpeedFunc(getMotorSpeedFunc),
+        m_readCurrentFunc(readCurrentFunc)
   {
   }
 
@@ -33,13 +46,17 @@ class Motor
   void run(MotorAction action);
   int readCurrent(uint32_t logTime);
 
-
- private:
+private:
   int m_pin1;
   int m_pin2;
   int m_speed;
-  std::function<int()> m_getThresholdFunc;
+
+  std::function<int()> m_getMotorThresholdMaxFunc;
+  std::function<int()> m_getMotorThresholdFunc;
+  std::function<int()> m_getMotorBlindTimeFunc;
+  std::function<int()> m_getMotorRunTimeLimitFunc;
+  std::function<int()> m_getMotorSpeedFunc;
   std::function<int()> m_readCurrentFunc;
 };
 
-#endif  // MOTORCONTROLLER_H
+#endif // MOTORCONTROLLER_H

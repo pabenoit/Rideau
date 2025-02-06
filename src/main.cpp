@@ -8,7 +8,7 @@
 #include <ESPmDNS.h>
 #include <EEPROM.h>
 #include <math.h>
-//#include <sunset.h>
+// #include <sunset.h>
 
 #include <INA219_WE.h>
 
@@ -40,27 +40,45 @@ void setup();
 void loop();
 void applyNoAction(int deviceId, int action);
 void applyMotorAction(int deviceId, int action);
-int getThreshold();
 int readCurrent();
+
+int getMotorThresholdMax();
+int getMotorThreshold();
+int getMotorBlindTime();
+int getMotorRunTimeLimit();
+int getMotorSpeed();
 
 extern std::tuple<bool, int, int> handleHttpRequest();
 extern time_t getNtpTime();
 
 INA219_WE ina219 = INA219_WE();
 
-Motor motors[] = {Motor(MOTOR1_PIN1, MOTOR1_PIN2, MOTOR1_SPEED, getThreshold, readCurrent),
-                  Motor(MOTOR2_PIN1, MOTOR2_PIN2, MOTOR2_SPEED, getThreshold, readCurrent)};
+Configuration systemCfg;
+
+Motor motors[] = {Motor(MOTOR1_PIN1, MOTOR1_PIN2, MOTOR1_SPEED,
+                        getMotorThresholdMax,
+                        getMotorThreshold,
+                        getMotorBlindTime,
+                        getMotorRunTimeLimit,
+                        getMotorSpeed,
+                        readCurrent),
+
+                  Motor(MOTOR2_PIN1, MOTOR2_PIN2, MOTOR2_SPEED,
+                        getMotorThresholdMax,
+                        getMotorThreshold,
+                        getMotorBlindTime,
+                        getMotorRunTimeLimit,
+                        getMotorSpeed,
+                        readCurrent)};
+
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 WiFiClient myWifiClient;
 
-Configuration systemCfg;
 int currentDay = -1;
 
-int sunSetOfTheday = 7 * 60;    // Default value in case can't get the value from the internet
-int sunRiseOfTheday = 18 * 60;  // Default value in case can't get the value from the internet
-
-int getThreshold() { return systemCfg.cfg.thresholdMaxCurrent; }
+int sunSetOfTheday = 7 * 60;   // Default value in case can't get the value from the internet
+int sunRiseOfTheday = 18 * 60; // Default value in case can't get the value from the internet
 
 int readCurrent()
 {
@@ -68,31 +86,82 @@ int readCurrent()
   return static_cast<int>(current_mA);
 }
 
+int getMotorThresholdMax() { return systemCfg.cfg.motorThresholdMax; };
+int getMotorThreshold() { return systemCfg.cfg.motorThreshold; };
+int getMotorBlindTime() { return systemCfg.cfg.motorBlindTime; };
+int getMotorRunTimeLimit() { return systemCfg.cfg.motorRunTimeLimit; };
+int getMotorSpeed() { return systemCfg.cfg.motorSpeed; };
+
 void setup()
 {
   // Start serial communication for debugging
   Serial.begin(115200);
 
-  //Increment boot count
+  // Increment boot count
   systemCfg.IncrementBootCount();
 
   Serial.println("Starting...");
 
+  // Init EEPROM
+  //  EEPROM.begin(EEPROM_SIZE);
+
+#if 0
+  systemCfg.cfg.wifi.ssid = "RFBP";
+  systemCfg.cfg.wifi.password = "CE1736A5";
+  systemCfg.cfg.wifi.mdns = "esp32";
+
+  if (systemCfg.cfg.devices.size() == 0)
+  {
+    Device newDevice1("Rideau");
+    Automation newAutomation1(static_cast<int>(Automation::Action::Open),
+                              static_cast<int>(Automation::Type::Sun),
+                              "6:30",
+                              0,
+                              static_cast<int>(Automation::Status::Enable));
+
+    Automation newAutomation2(static_cast<int>(Automation::Action::Close),
+                              static_cast<int>(Automation::Type::SpecificTime),
+                              "23:00",
+                              0,
+                              static_cast<int>(Automation::Status::Enable));
+    newDevice1.automations.insert(std::make_pair(1, newAutomation1));
+    newDevice1.automations.insert(std::make_pair(2, newAutomation2));
+    systemCfg.cfg.devices.insert(std::make_pair(0, newDevice1));
+
+    Device newDevice2("Voilage");
+    Automation newAutomation3(static_cast<int>(Automation::Action::Open),
+                              static_cast<int>(Automation::Type::Sun),
+                              "8:00",
+                              0,
+                              static_cast<int>(Automation::Status::Enable));
+
+    Automation newAutomation4(static_cast<int>(Automation::Action::Close),
+                              static_cast<int>(Automation::Type::SpecificTime),
+                              "11:00",
+                              0,
+                              static_cast<int>(Automation::Status::Enable));
+    newDevice2.automations.insert(std::make_pair(1, newAutomation3));
+    newDevice2.automations.insert(std::make_pair(2, newAutomation4));
+    systemCfg.cfg.devices.insert(std::make_pair(1, newDevice2));
+
+    systemCfg.saveToFLASH();
+  }
+
+#else
   systemCfg.loadFromFLASH();
+#endif
   Serial.println(systemCfg.GetAllInfo().c_str());
 
   Wire.begin();
   if (!ina219.init())
   {
     Serial.println("INA219 not connected!");
-    while (1);
+    while (1)
+      ;
   }
-  
   ////   ina219.setPGain(PG_80);
   ina219.setBusRange(BRNG_16);
-  ina219.setADCMode(SAMPLE_MODE_64);  // choose mode and uncomment for change of default
-
-
+  ina219.setADCMode(SAMPLE_MODE_64); // choose mode and uncomment for change of default
 
   motors[0].setup();
   motors[1].setup();
@@ -101,16 +170,17 @@ void setup()
   WiFi.begin(systemCfg.cfg.wifi.ssid.c_str(), systemCfg.cfg.wifi.password.c_str());
 
   Serial.print("Connecting to WiFi...");
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(200);
-      Serial.print(".");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(200);
+    Serial.print(".");
   }
 
   Serial.println();
   Serial.println("Connected to WiFi");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-    
+
   // Start the server
   server.begin();
   Serial.println("Server started");
@@ -120,26 +190,27 @@ void setup()
   Serial.println(WiFi.localIP());
 
   // Initialize the mDNS library.
-     // Set up mDNS responder:
-    // - first argument is the domain name, in this example
-    //   the fully-qualified domain name is "esp32.local"
-    // - second argument is the IP address to advertise
-    //   we send our IP address on the WiFi network
-    if (!MDNS.begin(systemCfg.cfg.wifi.mdns.c_str())) {
-        Serial.println("Error setting up MDNS responder!");
-        while(1) {
-            delay(1000);
-        }
+  // Set up mDNS responder:
+  // - first argument is the domain name, in this example
+  //   the fully-qualified domain name is "esp32.local"
+  // - second argument is the IP address to advertise
+  //   we send our IP address on the WiFi network
+  if (!MDNS.begin(systemCfg.cfg.wifi.mdns.c_str()))
+  {
+    Serial.println("Error setting up MDNS responder!");
+    while (1)
+    {
+      delay(1000);
     }
-    Serial.println("mDNS responder started");
+  }
+  Serial.println("mDNS responder started");
 
-    // Start TCP (HTTP) server
-    server.begin();
-    Serial.println("TCP server started");
+  // Start TCP (HTTP) server
+  server.begin();
+  Serial.println("TCP server started");
 
-    // Add service to MDNS-SD
-    MDNS.addService("http", "tcp", 80);
-
+  // Add service to MDNS-SD
+  MDNS.addService("http", "tcp", 80);
 
   // Retreive the time from internet
   // https://playground.arduino.cc/Code/Time/
@@ -206,7 +277,6 @@ void loop()
   // MDNS.update();
 }
 
-
 void applyNoAction(int deviceId, int action)
 {
   (void)deviceId;
@@ -220,19 +290,19 @@ void applyMotorAction(int deviceId, int action)
 
   switch (action)
   {
-    case 0:
-      Serial.print("Opening Motor ");
-      Serial.println(deviceId);
-      motors[deviceId].run(Motor::FORWARD);
-      break;
+  case 0:
+    Serial.print("Opening Motor ");
+    Serial.println(deviceId);
+    motors[deviceId].run(Motor::FORWARD);
+    break;
 
-    case 1:
-      Serial.print("Closing Motor ");
-      Serial.println(deviceId);
-      motors[deviceId].run(Motor::REVERSE);
-      break;
+  case 1:
+    Serial.print("Closing Motor ");
+    Serial.println(deviceId);
+    motors[deviceId].run(Motor::REVERSE);
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 }

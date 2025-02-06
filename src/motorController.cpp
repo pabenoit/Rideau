@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include "motorController.h"
 
-#define DEBUG 1  // Set to 0 to disable debug prints
+#define DEBUG 1 // Set to 0 to disable debug prints
 
 #if DEBUG
 #define DEBUG_PRINT(x) Serial.print(x)
@@ -55,33 +55,33 @@ void Motor::performAction(MotorAction action)
 {
   switch (action)
   {
-    case FORWARD:
-      DEBUG_PRINTLN("Debug: FORWARD");
-      digitalWrite(m_pin2, HIGH);
-      digitalWrite(m_pin1, LOW);
-      digitalWrite(m_speed, 50);
-      break;
+  case FORWARD:
+    DEBUG_PRINTLN("Debug: FORWARD");
+    digitalWrite(m_pin2, HIGH);
+    digitalWrite(m_pin1, LOW);
+    analogWrite(m_speed, m_getMotorSpeedFunc());
+    break;
 
-    case REVERSE:
-      DEBUG_PRINTLN("Debug: REVERSE");
-      digitalWrite(m_pin2, LOW);
-      digitalWrite(m_pin1, HIGH);
-      digitalWrite(m_speed, 50);
-      break;
+  case REVERSE:
+    DEBUG_PRINTLN("Debug: REVERSE");
+    digitalWrite(m_pin2, LOW);
+    digitalWrite(m_pin1, HIGH);
+    analogWrite(m_speed, m_getMotorSpeedFunc());
+    break;
 
-    case STANDBY:
-      DEBUG_PRINTLN("Debug: STANDBY");
-      digitalWrite(m_pin1, LOW);
-      digitalWrite(m_pin2, LOW);
-      digitalWrite(m_speed, 0);
-      break;
+  case STANDBY:
+    DEBUG_PRINTLN("Debug: STANDBY");
+    digitalWrite(m_pin1, LOW);
+    digitalWrite(m_pin2, LOW);
+    analogWrite(m_speed, 0);
+    break;
 
-    case BRAKE:
-      DEBUG_PRINTLN("Debug: BRAKE");
-      digitalWrite(m_pin1, HIGH);
-      digitalWrite(m_pin2, HIGH);
-      digitalWrite(m_speed, 255);
-      break;
+  case BRAKE:
+    DEBUG_PRINTLN("Debug: BRAKE");
+    digitalWrite(m_pin1, HIGH);
+    digitalWrite(m_pin2, HIGH);
+    analogWrite(m_speed, 255);
+    break;
   }
 }
 
@@ -95,31 +95,33 @@ void Motor::run(MotorAction action)
 
   performAction(action);
 
-  while ((millis() < (startTime + 9000)) && (continueRunning))
+  while ((millis() < (startTime + m_getMotorRunTimeLimitFunc())) && (continueRunning))
   {
     currentTension = readCurrent(millis() - startTime);
 
-    if (millis() >= (startTime + 350))
+    if (millis() >= (startTime + m_getMotorBlindTimeFunc()))
     {
-      continueRunning = (currentTension < m_getThresholdFunc());
+      continueRunning = (currentTension < m_getMotorThresholdFunc());
     }
 
     // Emengency stop
-    if (currentTension > 3000)
+    if (currentTension > m_getMotorThresholdMaxFunc())
     {
       performAction(BRAKE);
       continueRunning = false;
     }
 
-    DEBUG_PRINTLN("currentTension(" + String(currentTension) + ") endTime(" + String(startTime + 9000) + ") millis()(" +
-                  String(millis()) + ") threshold(" + String(getThreshold()) + ")");
+    // DEBUG_PRINTLN("currentTension(" + String(currentTension) + ") endTime(" + String(startTime + 9000) + ") millis()(" +
+    //               String(millis()) + ") threshold(" + String(getThreshold()) + ")");
   }
 
   // performAction(BRAKE);
 
-  // uint32_t startTime2 = millis();
-  // while (millis() < (startTime2 + 350))
-  // {
+  uint32_t startTime2 = millis();
+  while (millis() < (startTime2 + 150))
+  {
+    readCurrent(millis() - startTime);
+  }
   //   currentTension = readCurrent(millis() - startTime);
 
   //   DEBUG_PRINTLN("-- currentTension(" + String(currentTension) + ") startTime(" + String(startTime) + ") millis()(" +
