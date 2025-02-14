@@ -3,6 +3,7 @@
 
 #include <TimeLib.h>
 #include <WiFi.h>
+#include <ESPAsyncWebServer.h>
 #include <WiFiUdp.h>
 
 #include <ESPmDNS.h>
@@ -48,7 +49,6 @@ int getMotorBlindTime();
 int getMotorRunTimeLimit();
 int getMotorSpeed();
 
-extern std::tuple<bool, int, int> handleHttpRequest();
 extern time_t getNtpTime();
 
 INA219_WE ina219 = INA219_WE();
@@ -72,8 +72,8 @@ Motor motors[] = {Motor(MOTOR1_PIN1, MOTOR1_PIN2, MOTOR1_SPEED,
                         readCurrent)};
 
 int status = WL_IDLE_STATUS;
-WiFiServer server(80);
-WiFiClient myWifiClient;
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
 
 int currentDay = -1;
 
@@ -92,6 +92,21 @@ int getMotorBlindTime() { return systemCfg.cfg.motorBlindTime; };
 int getMotorRunTimeLimit() { return systemCfg.cfg.motorRunTimeLimit; };
 int getMotorSpeed() { return systemCfg.cfg.motorSpeed; };
 
+// WebServer
+void setupWebServer();
+
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type,
+               void * arg, uint8_t * data, size_t len) {
+    if (type == WS_EVT_CONNECT) {
+        Serial.println("Client connected");
+      } else if (type == WS_EVT_DISCONNECT) {
+        Serial.println("Client disconnected");
+    } else if (type == WS_EVT_DATA) {
+        Serial.println("Data received");
+        // Handle incoming data
+    }
+}
+
 void setup()
 {
   // Start serial communication for debugging
@@ -103,9 +118,9 @@ void setup()
   Serial.println("Starting...");
 
   // Init EEPROM
-  //  EEPROM.begin(EEPROM_SIZE);
+  // EEPROM.begin(EEPROM_SIZE);
 
-#if 0
+#if 1
   systemCfg.cfg.wifi.ssid = "RFBP";
   systemCfg.cfg.wifi.password = "CE1736A5";
   systemCfg.cfg.wifi.mdns = "esp32";
@@ -153,15 +168,15 @@ void setup()
   Serial.println(systemCfg.GetAllInfo().c_str());
 
   Wire.begin();
-  if (!ina219.init())
-  {
-    Serial.println("INA219 not connected!");
-    while (1)
-      ;
-  }
-  ////   ina219.setPGain(PG_80);
-  ina219.setBusRange(BRNG_16);
-  ina219.setADCMode(SAMPLE_MODE_64); // choose mode and uncomment for change of default
+  // if (!ina219.init())
+  // {
+  //   Serial.println("INA219 not connected!");
+  //   while (1)
+  //     ;
+  // }
+  // ////   ina219.setPGain(PG_80);
+  // ina219.setBusRange(BRNG_16);
+  // ina219.setADCMode(SAMPLE_MODE_64); // choose mode and uncomment for change of default
 
   motors[0].setup();
   motors[1].setup();
@@ -181,9 +196,14 @@ void setup()
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
+  setupWebServer();
+
   // Start the server
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
   server.begin();
-  Serial.println("Server started");
+  Serial.println("Server started"); 
 
   // Print the IP address
   Serial.print("IP Address: ");
@@ -225,6 +245,10 @@ void setup()
 
 void loop()
 {
+//   ws.textAll( systemCfg.GetAllInfo().c_str());
+//   delay(5000); // Delay for demonstration purposes
+
+
   if (currentDay != day())
   {
     Serial.println("New day");
@@ -267,11 +291,7 @@ void loop()
 
   systemCfg.applyListAction(applyMotorAction);
 
-  auto [httpRc, httpDeviceId, httpAction] = handleHttpRequest();
-  if (httpRc == true)
-  {
-    applyMotorAction(httpDeviceId, httpAction);
-  }
+  // applyMotorAction(httpDeviceId, httpAction);
 
   // Handle mDNS queries
   // MDNS.update();

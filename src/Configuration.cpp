@@ -6,13 +6,13 @@
 #include <Arduino_JSON.h>
 #include <EEPROM.h>
 #include <Preferences.h>
+#include <ESPmDNS.h>
 
 #include <TimeLib.h>
 
 #include "Configuration.h"
 
 #define MAX_DEVICES 2
-#define nameof(var) #var  // Convert variable name to a string
 
 extern Configuration systemCfg;
 
@@ -342,6 +342,8 @@ bool Configuration::modifyWifiLocation(const char *jsonString)
       systemCfg.cfg.wifi.ssid = (const char *)wifi["ssid"];
       systemCfg.cfg.wifi.password = (const char *)wifi["password"];
       systemCfg.cfg.wifi.mdns = (const char *)wifi["mdns"];
+
+      MDNS.setInstanceName(systemCfg.cfg.wifi.mdns.c_str());      
       rc = true;
     }
     else
